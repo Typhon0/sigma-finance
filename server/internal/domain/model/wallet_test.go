@@ -133,10 +133,10 @@ func TestWalletBalance_ConversionAndSpam(t *testing.T) {
 
 func TestWalletCUTracking_Throttle(t *testing.T) {
 	cu := model.WalletCUTracking{
-		BillingMonth:          "2026-10",
+		BillingMonth:         "2026-10",
 		ComputeUnitsConsumed: 24000001, // > 24M (80% of 30M)
 		IsThrottled:          false,
-		UpdatedAt:             time.Now(),
+		UpdatedAt:            time.Now(),
 	}
 
 	assert.True(t, cu.ShouldThrottle(30000000, 0.80))

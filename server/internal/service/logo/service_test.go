@@ -153,5 +153,3 @@ func TestLogoService_CandidateURLsAndAliases(t *testing.T) {
 	assert.Equal(t, dogePath, path)
 	assert.Equal(t, "image/png", mime)
 }
-
-

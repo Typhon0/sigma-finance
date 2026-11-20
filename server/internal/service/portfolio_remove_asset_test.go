@@ -15,11 +15,11 @@ import (
 
 type removeAssetTestUOW struct {
 	repository.IUnitOfWork
-	portfolios       map[string]*model.Portfolio
-	accounts         map[string]*model.Account
-	assets           map[string]*model.Asset
-	positions        map[string]*model.Position
-	portfolioAssets  map[string]*model.PortfolioAsset
+	portfolios      map[string]*model.Portfolio
+	accounts        map[string]*model.Account
+	assets          map[string]*model.Asset
+	positions       map[string]*model.Position
+	portfolioAssets map[string]*model.PortfolioAsset
 }
 
 func (u *removeAssetTestUOW) Do(ctx context.Context, fn func(repository.IUnitOfWork) error) error {

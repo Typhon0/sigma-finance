@@ -21,11 +21,11 @@ type RedisCache struct {
 type CacheKey string
 
 const (
-	MarketDataKey    CacheKey = "market_data"
-	PerformanceKey   CacheKey = "performance"
-	PortfolioKey     CacheKey = "portfolio"
-	ChartDataKey     CacheKey = "chart_data"
-	AllocationKey    CacheKey = "allocation"
+	MarketDataKey  CacheKey = "market_data"
+	PerformanceKey CacheKey = "performance"
+	PortfolioKey   CacheKey = "portfolio"
+	ChartDataKey   CacheKey = "chart_data"
+	AllocationKey  CacheKey = "allocation"
 )
 
 // NewRedisCache creates a new Redis cache instance
@@ -34,27 +34,27 @@ func NewRedisCache(config *config.CacheConfig) (*RedisCache, error) {
 		Addr:     fmt.Sprintf("%s:%s", config.RedisHost, config.RedisPort),
 		Password: config.RedisPassword,
 		DB:       config.RedisDB,
-		
+
 		// Connection pool settings for performance
 		PoolSize:     20,
 		MinIdleConns: 5,
 		MaxRetries:   3,
-		
+
 		// Timeouts
 		DialTimeout:  5 * time.Second,
 		ReadTimeout:  3 * time.Second,
 		WriteTimeout: 3 * time.Second,
 		PoolTimeout:  4 * time.Second,
-		
+
 		// Keep-alive
-		IdleTimeout:    300 * time.Second,
+		IdleTimeout:        300 * time.Second,
 		IdleCheckFrequency: 60 * time.Second,
 	})
 
 	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	if err := rdb.Ping(ctx).Err(); err != nil {
 		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
 	}
@@ -111,7 +111,7 @@ func (r *RedisCache) Set(ctx context.Context, keyType CacheKey, key string, valu
 // Get retrieves a value from cache
 func (r *RedisCache) Get(ctx context.Context, keyType CacheKey, key string, dest interface{}) error {
 	fullKey := r.buildKey(keyType, key)
-	
+
 	data, err := r.client.Get(ctx, fullKey).Result()
 	if err != nil {
 		if err == redis.Nil {
@@ -183,7 +183,7 @@ func (r *RedisCache) Delete(ctx context.Context, keyType CacheKey, key string) e
 // DeletePattern removes all keys matching a pattern
 func (r *RedisCache) DeletePattern(ctx context.Context, keyType CacheKey, pattern string) error {
 	fullPattern := r.buildKey(keyType, pattern)
-	
+
 	keys, err := r.client.Keys(ctx, fullPattern).Result()
 	if err != nil {
 		return fmt.Errorf("failed to get keys for pattern: %w", err)

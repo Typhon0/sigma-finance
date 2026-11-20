@@ -47,7 +47,7 @@ func TestINSEEIndexer_HistoricalSmoothing(t *testing.T) {
 	// Verify progressive linear scaling logic
 	purchasePrice := 200000.0
 	finalValuation := 250000.0
-	rawFinalPrice := 230000.0 // Raw indexation gives 230k, but DVF says 250k
+	rawFinalPrice := 230000.0              // Raw indexation gives 230k, but DVF says 250k
 	diff := finalValuation - rawFinalPrice // +20 000 € gap
 
 	// Points at i=0 (purchase), i=1, i=2, i=3 (today)

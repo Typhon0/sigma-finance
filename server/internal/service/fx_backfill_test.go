@@ -16,10 +16,10 @@ import (
 
 type testFXRepoStub struct {
 	repository.IFXRateRepository
-	rates               map[string]*model.FXRate // key: BASE/QUOTE@YYYY-MM-DD
-	latestRates         map[string]*model.FXRate // key: BASE/QUOTE
-	saveRatesCallCount  int
-	savedRates          []*model.FXRate
+	rates              map[string]*model.FXRate // key: BASE/QUOTE@YYYY-MM-DD
+	latestRates        map[string]*model.FXRate // key: BASE/QUOTE
+	saveRatesCallCount int
+	savedRates         []*model.FXRate
 }
 
 func newTestFXRepoStub() *testFXRepoStub {

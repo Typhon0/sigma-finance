@@ -54,31 +54,31 @@ const (
 type ThemeFontPreference string
 
 const (
-	ThemeFontInter          ThemeFontPreference = "inter"
-	ThemeFontNotoSans       ThemeFontPreference = "noto-sans"
-	ThemeFontNunitoSans     ThemeFontPreference = "nunito-sans"
-	ThemeFontFigtree        ThemeFontPreference = "figtree"
-	ThemeFontRoboto         ThemeFontPreference = "roboto"
-	ThemeFontRaleway        ThemeFontPreference = "raleway"
-	ThemeFontDMSans         ThemeFontPreference = "dm-sans"
-	ThemeFontPublicSans     ThemeFontPreference = "public-sans"
-	ThemeFontOutfit         ThemeFontPreference = "outfit"
-	ThemeFontJetBrainsMono  ThemeFontPreference = "jetbrains-mono"
-	ThemeFontGeist          ThemeFontPreference = "geist"
-	ThemeFontGeistMono      ThemeFontPreference = "geist-mono"
-	ThemeFontLora           ThemeFontPreference = "lora"
-	ThemeFontMerriweather   ThemeFontPreference = "merriweather"
+	ThemeFontInter           ThemeFontPreference = "inter"
+	ThemeFontNotoSans        ThemeFontPreference = "noto-sans"
+	ThemeFontNunitoSans      ThemeFontPreference = "nunito-sans"
+	ThemeFontFigtree         ThemeFontPreference = "figtree"
+	ThemeFontRoboto          ThemeFontPreference = "roboto"
+	ThemeFontRaleway         ThemeFontPreference = "raleway"
+	ThemeFontDMSans          ThemeFontPreference = "dm-sans"
+	ThemeFontPublicSans      ThemeFontPreference = "public-sans"
+	ThemeFontOutfit          ThemeFontPreference = "outfit"
+	ThemeFontJetBrainsMono   ThemeFontPreference = "jetbrains-mono"
+	ThemeFontGeist           ThemeFontPreference = "geist"
+	ThemeFontGeistMono       ThemeFontPreference = "geist-mono"
+	ThemeFontLora            ThemeFontPreference = "lora"
+	ThemeFontMerriweather    ThemeFontPreference = "merriweather"
 	ThemeFontPlayfairDisplay ThemeFontPreference = "playfair-display"
-	ThemeFontNotoSerif      ThemeFontPreference = "noto-serif"
-	ThemeFontRobotoSlab     ThemeFontPreference = "roboto-slab"
-	ThemeFontOxanium        ThemeFontPreference = "oxanium"
-	ThemeFontManrope        ThemeFontPreference = "manrope"
-	ThemeFontSpaceGrotesk   ThemeFontPreference = "space-grotesk"
-	ThemeFontMontserrat     ThemeFontPreference = "montserrat"
-	ThemeFontIBMPlexSans    ThemeFontPreference = "ibm-plex-sans"
-	ThemeFontSourceSans3    ThemeFontPreference = "source-sans-3"
-	ThemeFontInstrumentSans ThemeFontPreference = "instrument-sans"
-	ThemeFontEBGaramond     ThemeFontPreference = "eb-garamond"
+	ThemeFontNotoSerif       ThemeFontPreference = "noto-serif"
+	ThemeFontRobotoSlab      ThemeFontPreference = "roboto-slab"
+	ThemeFontOxanium         ThemeFontPreference = "oxanium"
+	ThemeFontManrope         ThemeFontPreference = "manrope"
+	ThemeFontSpaceGrotesk    ThemeFontPreference = "space-grotesk"
+	ThemeFontMontserrat      ThemeFontPreference = "montserrat"
+	ThemeFontIBMPlexSans     ThemeFontPreference = "ibm-plex-sans"
+	ThemeFontSourceSans3     ThemeFontPreference = "source-sans-3"
+	ThemeFontInstrumentSans  ThemeFontPreference = "instrument-sans"
+	ThemeFontEBGaramond      ThemeFontPreference = "eb-garamond"
 	ThemeFontInstrumentSerif ThemeFontPreference = "instrument-serif"
 )
 
@@ -98,9 +98,9 @@ const (
 type ThemeMenuColor string
 
 const (
-	ThemeMenuColorDefault           ThemeMenuColor = "default"
-	ThemeMenuColorInverted          ThemeMenuColor = "inverted"
-	ThemeMenuColorDefaultTranslucent ThemeMenuColor = "default-translucent"
+	ThemeMenuColorDefault             ThemeMenuColor = "default"
+	ThemeMenuColorInverted            ThemeMenuColor = "inverted"
+	ThemeMenuColorDefaultTranslucent  ThemeMenuColor = "default-translucent"
 	ThemeMenuColorInvertedTranslucent ThemeMenuColor = "inverted-translucent"
 )
 
@@ -125,10 +125,10 @@ const (
 	DefaultThemeMenuAccent     ThemeMenuAccent     = ThemeMenuAccentSubtle
 	DefaultThemeMenuColor      ThemeMenuColor      = ThemeMenuColorDefault
 	DefaultThemeStyle          ThemeStyle          = ThemeStyleVega
-	DefaultThemeRadius                            = 0.625
-	MinThemeRadius                                = 0
-	MaxThemeRadius                                = 1.2
-	DefaultThemeRTL                               = false
+	DefaultThemeRadius                             = 0.625
+	MinThemeRadius                                 = 0
+	MaxThemeRadius                                 = 1.2
+	DefaultThemeRTL                                = false
 )
 
 type UserThemePreferences struct {

@@ -114,7 +114,7 @@ func (s *RentalIndicatorsService) GetIndicators(
 
 		// 5. Calculate gross yield if propertyValue provided and > 0
 		if propertyValue != nil && *propertyValue > 0 {
-			yield := math.Round(((mRent * 12.0) / *propertyValue * 100.0) * 10.0) / 10.0
+			yield := math.Round(((mRent*12.0) / *propertyValue * 100.0)*10.0) / 10.0
 			res.EstimatedGrossYield = &yield
 		}
 	}

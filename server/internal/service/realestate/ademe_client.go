@@ -28,12 +28,12 @@ func NewADEMEClient() *ADEMEClient {
 type ademeLineResponse struct {
 	Total   int `json:"total"`
 	Results []struct {
-		NumeroDPE               string      `json:"numero_dpe"`
-		NumeroDPERemplace       interface{} `json:"numero_dpe_remplace"`
-		EtiquetteDPE            string      `json:"etiquette_dpe"`
-		DateEtablissementDPE    string      `json:"date_etablissement_dpe"`
+		NumeroDPE                string      `json:"numero_dpe"`
+		NumeroDPERemplace        interface{} `json:"numero_dpe_remplace"`
+		EtiquetteDPE             string      `json:"etiquette_dpe"`
+		DateEtablissementDPE     string      `json:"date_etablissement_dpe"`
 		SurfaceHabitableLogement interface{} `json:"surface_habitable_logement"`
-		TypeBatiment            string      `json:"type_batiment"`
+		TypeBatiment             string      `json:"type_batiment"`
 	} `json:"results"`
 }
 

@@ -33,8 +33,6 @@ func NewPasswordResetTokenRepository(db bun.IDB) *PasswordResetTokenRepository {
 	}
 }
 
-
-
 // GetByToken retrieves a password reset token by its token value
 func (r *PasswordResetTokenRepository) GetByToken(ctx context.Context, token string) (*model.PasswordResetToken, error) {
 	return r.FindOneBy(ctx, ByColumn("token", token))

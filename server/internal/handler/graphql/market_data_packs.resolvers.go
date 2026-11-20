@@ -1,9 +1,9 @@
 package graphql
 
 import (
-	"log"
 	"context"
 	"encoding/json"
+	"log"
 	"strings"
 	"time"
 

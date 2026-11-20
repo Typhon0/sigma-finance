@@ -12,7 +12,7 @@ import (
 func main() {
 	dsn := "postgres://postgres:postgres@192.168.1.170:5432/sigma_finance_test?sslmode=disable"
 	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
-	
+
 	rows, err := sqldb.Query(`
 		SELECT column_name, data_type 
 		FROM information_schema.columns 
@@ -23,7 +23,7 @@ func main() {
 		return
 	}
 	defer rows.Close()
-	
+
 	for rows.Next() {
 		var col, typ string
 		rows.Scan(&col, &typ)

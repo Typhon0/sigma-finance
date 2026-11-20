@@ -394,4 +394,3 @@ func TestFetchCandlesConcurrentSymbols(t *testing.T) {
 		t.Fatalf("expected 2 candles, got %d", len(candles))
 	}
 }
-

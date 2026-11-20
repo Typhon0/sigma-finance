@@ -13,33 +13,33 @@ import (
 // MarketDataMonitor monitors market data quality and performance
 type MarketDataMonitor struct {
 	monitoringService *MonitoringService
-	sources          map[string]*DataSourceMetrics
-	mu               sync.RWMutex
-	alertThresholds  domain.MarketDataAlertThresholds
+	sources           map[string]*DataSourceMetrics
+	mu                sync.RWMutex
+	alertThresholds   domain.MarketDataAlertThresholds
 }
 
 // DataSourceMetrics tracks metrics for a specific market data source
 type DataSourceMetrics struct {
-	SourceName       string                 `json:"source_name"`
-	LastUpdate       time.Time              `json:"last_update"`
-	UpdateCount      int64                  `json:"update_count"`
-	ErrorCount       int64                  `json:"error_count"`
-	AvgLatency       time.Duration          `json:"avg_latency"`
-	SuccessRate      float64                `json:"success_rate"`
-	DataQuality      DataQualityMetrics     `json:"data_quality"`
-	AssetCoverage    map[string]int         `json:"asset_coverage"` // asset_type -> count
-	PriceValidation  PriceValidationMetrics `json:"price_validation"`
-	Uptime           UptimeMetrics          `json:"uptime"`
+	SourceName      string                 `json:"source_name"`
+	LastUpdate      time.Time              `json:"last_update"`
+	UpdateCount     int64                  `json:"update_count"`
+	ErrorCount      int64                  `json:"error_count"`
+	AvgLatency      time.Duration          `json:"avg_latency"`
+	SuccessRate     float64                `json:"success_rate"`
+	DataQuality     DataQualityMetrics     `json:"data_quality"`
+	AssetCoverage   map[string]int         `json:"asset_coverage"` // asset_type -> count
+	PriceValidation PriceValidationMetrics `json:"price_validation"`
+	Uptime          UptimeMetrics          `json:"uptime"`
 }
 
 // DataQualityMetrics tracks data quality indicators
 type DataQualityMetrics struct {
-	StaleDataCount     int64   `json:"stale_data_count"`
-	InvalidPriceCount  int64   `json:"invalid_price_count"`
-	MissingDataCount   int64   `json:"missing_data_count"`
-	DuplicateCount     int64   `json:"duplicate_count"`
-	QualityScore       float64 `json:"quality_score"` // 0-100
-	LastQualityCheck   time.Time `json:"last_quality_check"`
+	StaleDataCount    int64     `json:"stale_data_count"`
+	InvalidPriceCount int64     `json:"invalid_price_count"`
+	MissingDataCount  int64     `json:"missing_data_count"`
+	DuplicateCount    int64     `json:"duplicate_count"`
+	QualityScore      float64   `json:"quality_score"` // 0-100
+	LastQualityCheck  time.Time `json:"last_quality_check"`
 }
 
 // PriceValidationMetrics tracks price validation results
@@ -53,12 +53,12 @@ type PriceValidationMetrics struct {
 
 // UptimeMetrics tracks source availability
 type UptimeMetrics struct {
-	TotalRequests    int64         `json:"total_requests"`
-	SuccessfulRequests int64       `json:"successful_requests"`
-	FailedRequests   int64         `json:"failed_requests"`
-	UptimePercentage float64       `json:"uptime_percentage"`
-	LastDowntime     *time.Time    `json:"last_downtime,omitempty"`
-	DowntimeDuration time.Duration `json:"downtime_duration"`
+	TotalRequests      int64         `json:"total_requests"`
+	SuccessfulRequests int64         `json:"successful_requests"`
+	FailedRequests     int64         `json:"failed_requests"`
+	UptimePercentage   float64       `json:"uptime_percentage"`
+	LastDowntime       *time.Time    `json:"last_downtime,omitempty"`
+	DowntimeDuration   time.Duration `json:"downtime_duration"`
 }
 
 // MarketDataAlertThresholds and MarketDataUpdate types are defined in domain package
@@ -67,14 +67,14 @@ type UptimeMetrics struct {
 func NewMarketDataMonitor(monitoringService *MonitoringService) *MarketDataMonitor {
 	monitor := &MarketDataMonitor{
 		monitoringService: monitoringService,
-		sources:          make(map[string]*DataSourceMetrics),
+		sources:           make(map[string]*DataSourceMetrics),
 		alertThresholds: domain.MarketDataAlertThresholds{
-			MaxLatency:        5 * time.Second,
-			MinSuccessRate:    0.95,
-			MaxStaleDataAge:   15 * time.Minute,
-			MinQualityScore:   85.0,
-			MaxOutlierRate:    0.05,
-			MinUptimePercent:  99.0,
+			MaxLatency:       5 * time.Second,
+			MinSuccessRate:   0.95,
+			MaxStaleDataAge:  15 * time.Minute,
+			MinQualityScore:  85.0,
+			MaxOutlierRate:   0.05,
+			MinUptimePercent: 99.0,
 		},
 	}
 
@@ -168,14 +168,14 @@ func (mdm *MarketDataMonitor) validatePriceData(source *DataSourceMetrics, updat
 	// Check for negative prices
 	if update.Price.IsNegative() {
 		source.PriceValidation.NegativePriceCount++
-		log.Printf("[WARN] Warning: Negative price detected from %s for asset %s: %s", 
+		log.Printf("[WARN] Warning: Negative price detected from %s for asset %s: %s",
 			update.Source, update.AssetID, update.Price.String())
 	}
 
 	// Check for zero prices
 	if update.Price.IsZero() {
 		source.PriceValidation.ZeroPriceCount++
-		log.Printf("[WARN] Warning: Zero price detected from %s for asset %s", 
+		log.Printf("[WARN] Warning: Zero price detected from %s for asset %s",
 			update.Source, update.AssetID)
 	}
 
@@ -183,7 +183,7 @@ func (mdm *MarketDataMonitor) validatePriceData(source *DataSourceMetrics, updat
 	// This would require storing previous prices - simplified for now
 	if update.Price.GreaterThan(decimal.NewFromFloat(1000000)) {
 		source.PriceValidation.OutlierCount++
-		log.Printf("[WARN] Warning: Potential outlier price from %s for asset %s: %s", 
+		log.Printf("[WARN] Warning: Potential outlier price from %s for asset %s: %s",
 			update.Source, update.AssetID, update.Price.String())
 	}
 
@@ -245,8 +245,8 @@ func (mdm *MarketDataMonitor) calculateQualityScore(source *DataSourceMetrics) f
 	}
 
 	// Deduct points for invalid prices
-	totalInvalidPrices := source.PriceValidation.NegativePriceCount + 
-		source.PriceValidation.ZeroPriceCount + 
+	totalInvalidPrices := source.PriceValidation.NegativePriceCount +
+		source.PriceValidation.ZeroPriceCount +
 		source.PriceValidation.OutlierCount
 
 	if source.UpdateCount > 0 {

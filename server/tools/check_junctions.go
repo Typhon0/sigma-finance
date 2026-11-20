@@ -12,7 +12,7 @@ import (
 func main() {
 	dsn := "postgres://postgres:postgres@192.168.1.170:5432/sigma_finance_test?sslmode=disable"
 	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
-	
+
 	tables := []string{"watchlist_asset", "asset_tag", "portfolio_tag"}
 	for _, table := range tables {
 		fmt.Printf("--- %s ---\n", table)

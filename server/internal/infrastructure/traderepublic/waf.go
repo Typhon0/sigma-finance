@@ -192,4 +192,3 @@ func (m *MockWAFTokenProvider) GetWAFToken(ctx context.Context) (string, error) 
 	}
 	return "mock-aws-waf-token-verified-2026", nil
 }
-

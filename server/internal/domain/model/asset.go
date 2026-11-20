@@ -133,60 +133,60 @@ type BankAccountMetadata struct {
 
 // RealEstateMetadata contains real estate-specific information
 type RealEstateMetadata struct {
-	PropertyType        string   `json:"property_type"` // residential, commercial, land, house, apartment, etc.
-	Category            *string  `json:"category,omitempty"`
-	Currency            string   `json:"currency,omitempty"`
-	Address             string   `json:"address"`
-	City                string   `json:"city"`
-	State               string   `json:"state"`
-	Country             string   `json:"country"`
-	ZipCode             string   `json:"zip_code"`
-	SquareFeet          *int     `json:"square_feet,omitempty"`
-	LandSurface         *float64 `json:"land_surface,omitempty"`
-	YearBuilt           *int     `json:"year_built,omitempty"`
-	Bedrooms            *int     `json:"bedrooms,omitempty"`
-	Bathrooms           *float64 `json:"bathrooms,omitempty"`
-	Rooms               *int     `json:"rooms,omitempty"`
-	Floor               *int     `json:"floor,omitempty"`
-	TotalFloors         *int     `json:"total_floors,omitempty"`
-	Garages             *int     `json:"garages,omitempty"`
-	ParkingSpaces       *int     `json:"parking_spaces,omitempty"`
-	EnergyLabel         *string  `json:"energy_label,omitempty"`
-	Condition           *string  `json:"condition,omitempty"`
+	PropertyType  string   `json:"property_type"` // residential, commercial, land, house, apartment, etc.
+	Category      *string  `json:"category,omitempty"`
+	Currency      string   `json:"currency,omitempty"`
+	Address       string   `json:"address"`
+	City          string   `json:"city"`
+	State         string   `json:"state"`
+	Country       string   `json:"country"`
+	ZipCode       string   `json:"zip_code"`
+	SquareFeet    *int     `json:"square_feet,omitempty"`
+	LandSurface   *float64 `json:"land_surface,omitempty"`
+	YearBuilt     *int     `json:"year_built,omitempty"`
+	Bedrooms      *int     `json:"bedrooms,omitempty"`
+	Bathrooms     *float64 `json:"bathrooms,omitempty"`
+	Rooms         *int     `json:"rooms,omitempty"`
+	Floor         *int     `json:"floor,omitempty"`
+	TotalFloors   *int     `json:"total_floors,omitempty"`
+	Garages       *int     `json:"garages,omitempty"`
+	ParkingSpaces *int     `json:"parking_spaces,omitempty"`
+	EnergyLabel   *string  `json:"energy_label,omitempty"`
+	Condition     *string  `json:"condition,omitempty"`
 
 	// Fees & Costs
-	AgencyFees          *float64 `json:"agency_fees,omitempty"`
-	NotaryFees          *float64 `json:"notary_fees,omitempty"`
-	RenovationFees      *float64 `json:"renovation_fees,omitempty"`
-	FurnishingCosts     *float64 `json:"furnishing_costs,omitempty"`
+	AgencyFees      *float64 `json:"agency_fees,omitempty"`
+	NotaryFees      *float64 `json:"notary_fees,omitempty"`
+	RenovationFees  *float64 `json:"renovation_fees,omitempty"`
+	FurnishingCosts *float64 `json:"furnishing_costs,omitempty"`
 
 	// Rental stream
-	RentalType          *string  `json:"rental_type,omitempty"`
-	RentalPeriod        *string  `json:"rental_period,omitempty"`
-	MonthlyRent         *float64 `json:"monthly_rent,omitempty"`
-	UtilityCosts        *float64 `json:"utility_costs,omitempty"`
-	YearlyMiscCosts     *float64 `json:"yearly_misc_costs,omitempty"`
+	RentalType      *string  `json:"rental_type,omitempty"`
+	RentalPeriod    *string  `json:"rental_period,omitempty"`
+	MonthlyRent     *float64 `json:"monthly_rent,omitempty"`
+	UtilityCosts    *float64 `json:"utility_costs,omitempty"`
+	YearlyMiscCosts *float64 `json:"yearly_misc_costs,omitempty"`
 
 	// Amenities
-	HasGarden           *bool    `json:"has_garden,omitempty"`
-	HasBalcony          *bool    `json:"has_balcony,omitempty"`
-	HasLift             *bool    `json:"has_lift,omitempty"`
-	HasPool             *bool    `json:"has_pool,omitempty"`
-	HasSauna            *bool    `json:"has_sauna,omitempty"`
-	IsFurnished         *bool    `json:"is_furnished,omitempty"`
-	IsNewConstruction   *bool    `json:"is_new_construction,omitempty"`
+	HasGarden         *bool `json:"has_garden,omitempty"`
+	HasBalcony        *bool `json:"has_balcony,omitempty"`
+	HasLift           *bool `json:"has_lift,omitempty"`
+	HasPool           *bool `json:"has_pool,omitempty"`
+	HasSauna          *bool `json:"has_sauna,omitempty"`
+	IsFurnished       *bool `json:"is_furnished,omitempty"`
+	IsNewConstruction *bool `json:"is_new_construction,omitempty"`
 
 	// Quality ratings
-	KitchenQuality      *string  `json:"kitchen_quality,omitempty"`
-	KitchenCondition    *string  `json:"kitchen_condition,omitempty"`
-	BathroomQuality     *string  `json:"bathroom_quality,omitempty"`
-	BathroomCondition   *string  `json:"bathroom_condition,omitempty"`
-	FlooringQuality     *string  `json:"flooring_quality,omitempty"`
-	FlooringCondition   *string  `json:"flooring_condition,omitempty"`
-	WindowsQuality      *string  `json:"windows_quality,omitempty"`
-	WindowsCondition    *string  `json:"windows_condition,omitempty"`
-	GeneralQuality      *string  `json:"general_quality,omitempty"`
-	GeneralCondition    *string  `json:"general_condition,omitempty"`
+	KitchenQuality    *string `json:"kitchen_quality,omitempty"`
+	KitchenCondition  *string `json:"kitchen_condition,omitempty"`
+	BathroomQuality   *string `json:"bathroom_quality,omitempty"`
+	BathroomCondition *string `json:"bathroom_condition,omitempty"`
+	FlooringQuality   *string `json:"flooring_quality,omitempty"`
+	FlooringCondition *string `json:"flooring_condition,omitempty"`
+	WindowsQuality    *string `json:"windows_quality,omitempty"`
+	WindowsCondition  *string `json:"windows_condition,omitempty"`
+	GeneralQuality    *string `json:"general_quality,omitempty"`
+	GeneralCondition  *string `json:"general_condition,omitempty"`
 
 	// Debt & Ownership Structure
 	LinkedLoanID        *string  `json:"linked_loan_id,omitempty"`
@@ -194,13 +194,13 @@ type RealEstateMetadata struct {
 	OwnershipStructure  string   `json:"ownership_structure,omitempty"`
 
 	// BAN Geocoding
-	AddressLabel        *string  `json:"address_label,omitempty"`
-	CityCode            *string  `json:"city_code,omitempty"`
-	BANID               *string  `json:"ban_id,omitempty"`
-	Latitude            *float64 `json:"latitude,omitempty"`
-	Longitude           *float64 `json:"longitude,omitempty"`
-	HasOutdoor          *bool    `json:"has_outdoor,omitempty"`
-	IsGroundFloor       *bool    `json:"is_ground_floor,omitempty"`
+	AddressLabel  *string  `json:"address_label,omitempty"`
+	CityCode      *string  `json:"city_code,omitempty"`
+	BANID         *string  `json:"ban_id,omitempty"`
+	Latitude      *float64 `json:"latitude,omitempty"`
+	Longitude     *float64 `json:"longitude,omitempty"`
+	HasOutdoor    *bool    `json:"has_outdoor,omitempty"`
+	IsGroundFloor *bool    `json:"is_ground_floor,omitempty"`
 
 	// Financial & Valuation
 	PurchasePrice       *float64                   `json:"purchase_price,omitempty"`
@@ -291,28 +291,28 @@ type CompanyOwnerMetadata struct {
 
 // LoanMetadata contains loan/debt-specific information
 type LoanMetadata struct {
-	LoanType            string                 `json:"loan_type"`                     // amortizing, in_fine, deferred_interest, deferred_total, step
-	LoanAmount          int64                  `json:"loan_amount"`                   // in cents (original principal)
-	RemainingBalance    int64                  `json:"remaining_balance"`             // in cents
-	InterestRate        float64                `json:"interest_rate"`                 // as percentage (e.g. 3.5)
-	DurationMonths      int                    `json:"duration_months"`               // total loan duration
-	MonthlyPayment      int64                  `json:"monthly_payment"`               // in cents
-	StartDate           string                 `json:"start_date"`                    // ISO date
-	EndDate             string                 `json:"end_date,omitempty"`            // ISO date
-	Lender              string                 `json:"lender"`                        // bank/lender name
-	LoanNumber          string                 `json:"loan_number,omitempty"`         // reference number
-	Currency            string                 `json:"currency"`                      // EUR, USD, etc.
-	DownPayment         int64                  `json:"down_payment,omitempty"`        // in cents
-	Status              string                 `json:"status"`                        // active, paid_off, delinquent
-	OwnershipMode       string                 `json:"ownership_mode"`                // personal, company
+	LoanType            string                 `json:"loan_type"`                      // amortizing, in_fine, deferred_interest, deferred_total, step
+	LoanAmount          int64                  `json:"loan_amount"`                    // in cents (original principal)
+	RemainingBalance    int64                  `json:"remaining_balance"`              // in cents
+	InterestRate        float64                `json:"interest_rate"`                  // as percentage (e.g. 3.5)
+	DurationMonths      int                    `json:"duration_months"`                // total loan duration
+	MonthlyPayment      int64                  `json:"monthly_payment"`                // in cents
+	StartDate           string                 `json:"start_date"`                     // ISO date
+	EndDate             string                 `json:"end_date,omitempty"`             // ISO date
+	Lender              string                 `json:"lender"`                         // bank/lender name
+	LoanNumber          string                 `json:"loan_number,omitempty"`          // reference number
+	Currency            string                 `json:"currency"`                       // EUR, USD, etc.
+	DownPayment         int64                  `json:"down_payment,omitempty"`         // in cents
+	Status              string                 `json:"status"`                         // active, paid_off, delinquent
+	OwnershipMode       string                 `json:"ownership_mode"`                 // personal, company
 	OwnershipPercentage *float64               `json:"ownership_percentage,omitempty"` // user's ownership % (e.g. 50.0)
-	ApplicationFee      int64                  `json:"application_fee,omitempty"`     // in cents
-	BrokerFee           int64                  `json:"broker_fee,omitempty"`          // in cents
-	InsuranceFee        int64                  `json:"insurance_fee,omitempty"`       // monthly, in cents
-	OtherFees           int64                  `json:"other_fees,omitempty"`          // in cents
-	EarlyRepaymentFee   float64                `json:"early_repayment_fee,omitempty"` // as percentage
-	Description         string                 `json:"description,omitempty"`         // free-text notes
-	LinkedAssetIDs      []string               `json:"linked_asset_ids,omitempty"`    // collateral / financed asset IDs
+	ApplicationFee      int64                  `json:"application_fee,omitempty"`      // in cents
+	BrokerFee           int64                  `json:"broker_fee,omitempty"`           // in cents
+	InsuranceFee        int64                  `json:"insurance_fee,omitempty"`        // monthly, in cents
+	OtherFees           int64                  `json:"other_fees,omitempty"`           // in cents
+	EarlyRepaymentFee   float64                `json:"early_repayment_fee,omitempty"`  // as percentage
+	Description         string                 `json:"description,omitempty"`          // free-text notes
+	LinkedAssetIDs      []string               `json:"linked_asset_ids,omitempty"`     // collateral / financed asset IDs
 	CoOwners            []CoOwnerMetadata      `json:"co_owners,omitempty"`
 	CompanyOwners       []CompanyOwnerMetadata `json:"company_owners,omitempty"`
 	Steps               []LoanStepMetadata     `json:"steps,omitempty"`

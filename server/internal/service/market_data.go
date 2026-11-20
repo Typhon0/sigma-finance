@@ -468,13 +468,13 @@ func (s *marketDataService) GetRealTimePriceByInstrument(ctx context.Context, us
 		latestPrice, priceErr := s.priceRepo.GetLatestPrice(ctx, asset.ID)
 		if priceErr == nil && latestPrice != nil {
 			candle := model.Candle{
-				Timestamp:  latestPrice.Timestamp,
-				Open:       latestPrice.Price,
-				High:       latestPrice.Price,
-				Low:        latestPrice.Price,
-				Close:      latestPrice.Price,
-				Volume:     decimal.Zero,
-				Source:     latestPrice.Source,
+				Timestamp: latestPrice.Timestamp,
+				Open:      latestPrice.Price,
+				High:      latestPrice.Price,
+				Low:       latestPrice.Price,
+				Close:     latestPrice.Price,
+				Volume:    decimal.Zero,
+				Source:    latestPrice.Source,
 			}
 			if latestPrice.Volume != nil {
 				candle.Volume = decimal.NewFromInt(*latestPrice.Volume)
@@ -534,13 +534,13 @@ func (s *marketDataService) GetRealTimePriceByInstrument(ctx context.Context, us
 			})
 			if quoteErr == nil && quoteResp != nil && !quoteResp.Last.IsZero() {
 				candle := model.Candle{
-					Timestamp:  quoteResp.Timestamp,
-					Open:       quoteResp.Last,
-					High:       quoteResp.Last,
-					Low:        quoteResp.Last,
-					Close:      quoteResp.Last,
-					Volume:     decimal.NewFromInt(quoteResp.Volume),
-					Source:     quoteResp.Source,
+					Timestamp: quoteResp.Timestamp,
+					Open:      quoteResp.Last,
+					High:      quoteResp.Last,
+					Low:       quoteResp.Last,
+					Close:     quoteResp.Last,
+					Volume:    decimal.NewFromInt(quoteResp.Volume),
+					Source:    quoteResp.Source,
 				}
 				candle.InstrumentID = &instrument.ID
 				candle.Symbol = instrument.Symbol
@@ -1200,10 +1200,10 @@ func scoreCryptoMatch(symbol string, providerExternalID string) int {
 		score += 100
 		// Exact native match like "solana:coin" for SOL, or "bitcoin:coin" for BTC
 		prefix := strings.Split(extID, ":")[0]
-		if prefix == sym || 
-		   (sym == "btc" && prefix == "bitcoin") || 
-		   (sym == "eth" && prefix == "ethereum") ||
-		   (sym == "doge" && prefix == "dogecoin") {
+		if prefix == sym ||
+			(sym == "btc" && prefix == "bitcoin") ||
+			(sym == "eth" && prefix == "ethereum") ||
+			(sym == "doge" && prefix == "dogecoin") {
 			score += 100
 		}
 	}
@@ -2833,81 +2833,81 @@ func (s *marketDataService) BackfillAssetPrices(ctx context.Context, userID stri
 							To:        fetchTo,
 							Limit:     5000,
 						})
-					if fetchErr != nil {
-						if len(toUpsert) > 0 {
-							log.Printf("[WARN] [BackfillAssetPrices] yfinance history fetch failed for remaining window asset=%s symbol=%s: %v", assetID, providerSymbol, fetchErr)
-							continue
+						if fetchErr != nil {
+							if len(toUpsert) > 0 {
+								log.Printf("[WARN] [BackfillAssetPrices] yfinance history fetch failed for remaining window asset=%s symbol=%s: %v", assetID, providerSymbol, fetchErr)
+								continue
+							}
+							code := "HISTORY_FETCH_FAILED"
+							if isYFinanceSymbolNotFound(fetchErr) {
+								code = "YFINANCE_SYMBOL_NOT_FOUND"
+							}
+							log.Printf("[ERROR] [BackfillAssetPrices] yfinance history fetch failed asset=%s instrument=%s symbol=%s code=%s err=%v", assetID, instrumentID, providerSymbol, code, fetchErr)
+							return nil, &HistoricalBackfillError{
+								Code:     code,
+								Provider: provider.ID(),
+								Symbol:   providerSymbol,
+								Message:  fmt.Sprintf("failed to fetch Yahoo Finance history for symbol %s", providerSymbol),
+								Err:      fetchErr,
+							}
 						}
-						code := "HISTORY_FETCH_FAILED"
-						if isYFinanceSymbolNotFound(fetchErr) {
-							code = "YFINANCE_SYMBOL_NOT_FOUND"
-						}
-						log.Printf("[ERROR] [BackfillAssetPrices] yfinance history fetch failed asset=%s instrument=%s symbol=%s code=%s err=%v", assetID, instrumentID, providerSymbol, code, fetchErr)
-						return nil, &HistoricalBackfillError{
-							Code:     code,
-							Provider: provider.ID(),
-							Symbol:   providerSymbol,
-							Message:  fmt.Sprintf("failed to fetch Yahoo Finance history for symbol %s", providerSymbol),
-							Err:      fetchErr,
-						}
-					}
 
-					candles := []model.Candle(nil)
-					if resp != nil {
-						candles = resp.Candles
-					}
-					if len(candles) == 0 {
-						if fetchTo.Sub(fetchFrom) <= 72*time.Hour {
-							log.Printf("[INFO] [BackfillAssetPrices] no candles for narrow window asset=%s symbol=%s from=%s to=%s", assetID, providerSymbol, fetchFrom.Format(time.RFC3339), fetchTo.Format(time.RFC3339))
+						candles := []model.Candle(nil)
+						if resp != nil {
+							candles = resp.Candles
+						}
+						if len(candles) == 0 {
+							if fetchTo.Sub(fetchFrom) <= 72*time.Hour {
+								log.Printf("[INFO] [BackfillAssetPrices] no candles for narrow window asset=%s symbol=%s from=%s to=%s", assetID, providerSymbol, fetchFrom.Format(time.RFC3339), fetchTo.Format(time.RFC3339))
+								continue
+							}
+							log.Printf("[INFO] [BackfillAssetPrices] empty window asset=%s symbol=%s from=%s to=%s", assetID, providerSymbol, fetchFrom.Format(time.DateOnly), window.End.Format(time.DateOnly))
 							continue
 						}
-						log.Printf("[INFO] [BackfillAssetPrices] empty window asset=%s symbol=%s from=%s to=%s", assetID, providerSymbol, fetchFrom.Format(time.DateOnly), window.End.Format(time.DateOnly))
-						continue
-					}
 
-					for _, candle := range candles {
-						candidate := model.AssetPrice{
-							AssetID:   assetID.String(),
-							Price:     candle.Close,
-							Timestamp: candle.Timestamp.UTC(),
-							Source:    provider.ID(),
-						}
-						if candle.Volume.IsPositive() {
-							vol := candle.Volume.IntPart()
-							candidate.Volume = &vol
-						}
-						existingPrice, exists := pricesByTimestamp[candidate.Timestamp]
-						if exists && assetPriceEquals(existingPrice, candidate) {
-							outcome.RowsSkipped++
-							continue
-						}
-						if exists {
-							outcome.RowsUpdated++
-						} else {
-							outcome.RowsInserted++
-						}
-						pricesByTimestamp[candidate.Timestamp] = candidate
-						toUpsert = append(toUpsert, candidate)
-						ts := candle.Timestamp
-						if firstAffected == nil || ts.Before(*firstAffected) {
-							firstAffected = &ts
-						}
-						if lastAffected == nil || ts.After(*lastAffected) {
-							lastAffected = &ts
+						for _, candle := range candles {
+							candidate := model.AssetPrice{
+								AssetID:   assetID.String(),
+								Price:     candle.Close,
+								Timestamp: candle.Timestamp.UTC(),
+								Source:    provider.ID(),
+							}
+							if candle.Volume.IsPositive() {
+								vol := candle.Volume.IntPart()
+								candidate.Volume = &vol
+							}
+							existingPrice, exists := pricesByTimestamp[candidate.Timestamp]
+							if exists && assetPriceEquals(existingPrice, candidate) {
+								outcome.RowsSkipped++
+								continue
+							}
+							if exists {
+								outcome.RowsUpdated++
+							} else {
+								outcome.RowsInserted++
+							}
+							pricesByTimestamp[candidate.Timestamp] = candidate
+							toUpsert = append(toUpsert, candidate)
+							ts := candle.Timestamp
+							if firstAffected == nil || ts.Before(*firstAffected) {
+								firstAffected = &ts
+							}
+							if lastAffected == nil || ts.After(*lastAffected) {
+								lastAffected = &ts
+							}
 						}
 					}
+				} else if len(toUpsert) == 0 {
+					return nil, err
 				}
 			} else if len(toUpsert) == 0 {
-				return nil, err
-			}
-		} else if len(toUpsert) == 0 {
-			return nil, &HistoricalBackfillError{
-				Code:     "YFINANCE_UNAVAILABLE",
-				Provider: "YFINANCE",
-				Message:  "Yahoo Finance historical backfill provider is not registered; check YFINANCE_HOST/YFINANCE_PORT and sidecar startup",
+				return nil, &HistoricalBackfillError{
+					Code:     "YFINANCE_UNAVAILABLE",
+					Provider: "YFINANCE",
+					Message:  "Yahoo Finance historical backfill provider is not registered; check YFINANCE_HOST/YFINANCE_PORT and sidecar startup",
+				}
 			}
 		}
-	}
 	}
 
 	if len(toUpsert) == 0 {

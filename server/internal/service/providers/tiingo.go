@@ -219,8 +219,6 @@ type tiingoErrorResponse struct {
 	Error  string `json:"error"`
 }
 
-
-
 func (t *TiingoProvider) GetCandles(ctx context.Context, req CandleRequest) (*CandleResponse, error) {
 	if req.APIKey == "" {
 		return nil, fmt.Errorf("tiingo requires API key")
@@ -863,7 +861,7 @@ func (t *TiingoProvider) GetQuote(ctx context.Context, req QuoteRequest) (*Quote
 
 	resp, err := t.doGetIEXQuote(ctx, symbol, req.APIKey)
 	if err != nil {
-		if	t.IsInCooldown() {
+		if t.IsInCooldown() {
 			return nil, err
 		}
 		return t.doGetEODQuote(ctx, symbol, req)

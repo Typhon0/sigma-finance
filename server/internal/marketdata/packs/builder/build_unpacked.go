@@ -445,15 +445,15 @@ func applySymbolLimit(symbols []sources.UniverseSymbol, opts BuildUnpackedOption
 func fetchCandles(ctx context.Context, source sources.CandleSource, req sources.FetchCandlesRequest) ([]sources.NormalizedCandle, error) {
 	candlesCh, errCh := source.FetchCandles(ctx, req)
 	candles := make([]sources.NormalizedCandle, 0, 2048)
-	
+
 	seenSymbols := make(map[string]struct{})
 	totalSymbols := len(req.Symbols)
 	if totalSymbols == 0 {
 		totalSymbols = 1 // Avoid division by zero
 	}
-	
+
 	lastPrinted := -1
-	
+
 	for candlesCh != nil || errCh != nil {
 		select {
 		case candle, ok := <-candlesCh:
@@ -463,7 +463,7 @@ func fetchCandles(ctx context.Context, source sources.CandleSource, req sources.
 			}
 			candles = append(candles, candle)
 			seenSymbols[candle.Symbol] = struct{}{}
-			
+
 			// Periodically write dynamic streaming progress to terminal on a single line
 			count := len(seenSymbols)
 			if count != lastPrinted && (count%50 == 0 || count == totalSymbols) {
@@ -483,7 +483,7 @@ func fetchCandles(ctx context.Context, source sources.CandleSource, req sources.
 			return nil, ctx.Err()
 		}
 	}
-	
+
 	// Final newline to clear progress bar and print complete state
 	fmt.Printf("\r   ✅ Streaming complete: %d symbols successfully fetched. Total candles: %d.\n", len(seenSymbols), len(candles))
 	return candles, nil
@@ -591,7 +591,7 @@ func BuildUnpackedPacksMulti(ctx context.Context, plans []*BuildPlan, opts Build
 			symbolMap[sym.Symbol] = sym
 		}
 	}
-	
+
 	allSymbols := make([]sources.UniverseSymbol, 0, len(symbolMap))
 	for _, sym := range symbolMap {
 		allSymbols = append(allSymbols, sym)

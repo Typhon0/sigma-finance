@@ -207,11 +207,10 @@ func calculateTotalTxFee(tx blockscoutTxItem, userAddress string, net model.Bloc
 	return totalFee.String()
 }
 
-
 type blockscoutResponse struct {
-	Status  string             `json:"status"`
-	Message string             `json:"message"`
-	Result  json.RawMessage    `json:"result"`
+	Status  string          `json:"status"`
+	Message string          `json:"message"`
+	Result  json.RawMessage `json:"result"`
 }
 
 // GetBlockscoutEndpoint returns the base API endpoint for supported networks
@@ -410,7 +409,7 @@ func (c *BlockscoutClient) FetchTransfers(ctx context.Context, net model.Blockch
 				TokenAddress:    &tokenAddr,
 				RawAmount:       rawAmt,
 				Decimals:        decimals,
-				FeeAmount:       "0", // Token transfer fee is accounted on the native tx
+				FeeAmount:       "0",    // Token transfer fee is accounted on the native tx
 				MovementIndex:   logIdx, // Deterministic EVM logIndex
 				ProviderSource:  "BLOCKSCOUT",
 				RawMetadataJSON: rawMeta,
@@ -500,4 +499,3 @@ func (c *BlockscoutClient) queryBlockscout(ctx context.Context, url string) ([]b
 
 	return items, nil
 }
-

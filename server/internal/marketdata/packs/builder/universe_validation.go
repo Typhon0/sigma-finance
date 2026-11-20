@@ -139,5 +139,3 @@ func hasBinancePublicData(ctx context.Context, client *http.Client, baseURL stri
 	}
 	return false, nil
 }
-
-

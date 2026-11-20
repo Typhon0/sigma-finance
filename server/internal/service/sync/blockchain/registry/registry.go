@@ -164,4 +164,3 @@ func (r *AdapterRegistry) EVMAdapter() *evm.EVMAdapter {
 func (r *AdapterRegistry) BitcoinClient() *bitcoin.Client {
 	return r.bitcoinClient
 }
-

@@ -555,4 +555,3 @@ func (a *EnableBankingAdapter) parseTransactionDate(bookingDate, valueDate strin
 	}
 	return a.timeNow().UTC()
 }
-

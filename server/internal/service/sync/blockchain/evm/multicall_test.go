@@ -77,13 +77,13 @@ func TestDecodeAggregate3Results(t *testing.T) {
 	buf = append(buf, PadUint256To32Bytes(big.NewInt(1))...)  // success
 	buf = append(buf, PadUint256To32Bytes(big.NewInt(64))...) // offset
 	buf = append(buf, PadUint256To32Bytes(big.NewInt(32))...) // len
-	buf = append(buf, PadUint256To32Bytes(val1)...)          // data
+	buf = append(buf, PadUint256To32Bytes(val1)...)           // data
 
 	// Elem 1
 	buf = append(buf, PadUint256To32Bytes(big.NewInt(1))...)  // success
 	buf = append(buf, PadUint256To32Bytes(big.NewInt(64))...) // offset
 	buf = append(buf, PadUint256To32Bytes(big.NewInt(32))...) // len
-	buf = append(buf, PadUint256To32Bytes(val2)...)          // data
+	buf = append(buf, PadUint256To32Bytes(val2)...)           // data
 
 	results, err := DecodeAggregate3Results(buf)
 	require.NoError(t, err)
@@ -114,4 +114,3 @@ func TestDecodeStringOrBytes32(t *testing.T) {
 
 	assert.Equal(t, "USD Coin", DecodeStringOrBytes32(dynamicStr))
 }
-

@@ -15,16 +15,16 @@ import (
 
 type mockAdminUserService struct {
 	service.IUserService
-	findUsersFunc       func(ctx context.Context, filter *service.AdminUserFilter, limit, offset *int, orderField *string, orderDesc bool) ([]model.User, int, error)
-	getStatsFunc        func(ctx context.Context) (*service.AdminUserStats, error)
-	createUserFunc      func(ctx context.Context, input service.AdminCreateUserInput) (*model.User, error)
-	updateUserFunc      func(ctx context.Context, id string, input service.AdminUpdateUserInput) (*model.User, error)
-	setRoleFunc         func(ctx context.Context, targetUserID string, role string, callerAdminID string) (*model.User, error)
-	setLockFunc         func(ctx context.Context, targetUserID string, locked bool, lockUntil *time.Time, callerAdminID string) (*model.User, error)
-	setPasswordFunc     func(ctx context.Context, targetUserID string, newPassword string) error
+	findUsersFunc        func(ctx context.Context, filter *service.AdminUserFilter, limit, offset *int, orderField *string, orderDesc bool) ([]model.User, int, error)
+	getStatsFunc         func(ctx context.Context) (*service.AdminUserStats, error)
+	createUserFunc       func(ctx context.Context, input service.AdminCreateUserInput) (*model.User, error)
+	updateUserFunc       func(ctx context.Context, id string, input service.AdminUpdateUserInput) (*model.User, error)
+	setRoleFunc          func(ctx context.Context, targetUserID string, role string, callerAdminID string) (*model.User, error)
+	setLockFunc          func(ctx context.Context, targetUserID string, locked bool, lockUntil *time.Time, callerAdminID string) (*model.User, error)
+	setPasswordFunc      func(ctx context.Context, targetUserID string, newPassword string) error
 	setEmailVerifiedFunc func(ctx context.Context, targetUserID string, verified bool) (*model.User, error)
-	deleteUserFunc      func(ctx context.Context, targetUserID string, hardDelete bool, callerAdminID string) error
-	getByIDFunc         func(ctx context.Context, id string) (*model.User, error)
+	deleteUserFunc       func(ctx context.Context, targetUserID string, hardDelete bool, callerAdminID string) error
+	getByIDFunc          func(ctx context.Context, id string) (*model.User, error)
 }
 
 func (m *mockAdminUserService) GetByID(ctx context.Context, id string) (*model.User, error) {
@@ -215,4 +215,3 @@ func TestAdminService_SelfProtection(t *testing.T) {
 		t.Fatal("error message mismatch")
 	}
 }
-

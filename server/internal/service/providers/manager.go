@@ -13,23 +13,23 @@ import (
 // Suffixes follow Yahoo Finance ticker conventions (e.g., ABEA.F, PSP5.PA).
 var internationalSuffixes = []string{
 	// European exchanges (Yahoo Finance format)
-	".F",   // Frankfurt/Xetra
-	".DE",  // Xetra (alternate)
-	".PA",  // Euronext Paris
-	".MI",  // Borsa Italiana (Milan)
-	".AS",  // Euronext Amsterdam
-	".BR",  // Euronext Brussels
-	".LS",  // Euronext Lisbon
-	".MC",  // Madrid (Bolsa de Madrid)
-	".SW",  // Swiss Exchange (SIX)
-	".VI",  // Vienna
-	".HE",  // Helsinki (Nasdaq Helsinki)
-	".OL",  // Oslo
-	".ST",  // Stockholm (Nasdaq Stockholm)
-	".CO",  // Copenhagen (Nasdaq Copenhagen)
-	".IR",  // Ireland (Euronext Dublin)
-	".L",   // London Stock Exchange
-	".IL",  // Tel Aviv
+	".F",  // Frankfurt/Xetra
+	".DE", // Xetra (alternate)
+	".PA", // Euronext Paris
+	".MI", // Borsa Italiana (Milan)
+	".AS", // Euronext Amsterdam
+	".BR", // Euronext Brussels
+	".LS", // Euronext Lisbon
+	".MC", // Madrid (Bolsa de Madrid)
+	".SW", // Swiss Exchange (SIX)
+	".VI", // Vienna
+	".HE", // Helsinki (Nasdaq Helsinki)
+	".OL", // Oslo
+	".ST", // Stockholm (Nasdaq Stockholm)
+	".CO", // Copenhagen (Nasdaq Copenhagen)
+	".IR", // Ireland (Euronext Dublin)
+	".L",  // London Stock Exchange
+	".IL", // Tel Aviv
 	// Legacy European exchange suffixes (older providers)
 	".LON", // London Stock Exchange
 	".DEX", // Germany XETRA
@@ -169,16 +169,16 @@ func (pm *providerManager) SelectBestProvider(assetType, symbol string, interval
 					break
 				}
 			}
-		if supportsInterval {
-			// Skip learned provider if currently in rate-limit cooldown
-			if provider.IsInCooldown() {
-				// Fall through to scoring-based routing
-			} else if caps.RequiresAPIKey && !requiresKey {
-				// No key available, skip learned route
-			} else {
-				return provider, nil
+			if supportsInterval {
+				// Skip learned provider if currently in rate-limit cooldown
+				if provider.IsInCooldown() {
+					// Fall through to scoring-based routing
+				} else if caps.RequiresAPIKey && !requiresKey {
+					// No key available, skip learned route
+				} else {
+					return provider, nil
+				}
 			}
-		}
 		}
 	}
 

@@ -111,7 +111,7 @@ func TestBlockscoutClient_IncomingVsOutgoingFeeAttribution(t *testing.T) {
 	}
 
 	assert.Equal(t, "105000000000000", calcFee(itemOutgoing, myAddr)) // 21000 * 5 gwei
-	assert.Equal(t, "0", calcFee(itemIncoming, myAddr))              // 0 for recipient!
+	assert.Equal(t, "0", calcFee(itemIncoming, myAddr))               // 0 for recipient!
 }
 
 func TestBlockscoutClient_RollupL1FeeAttribution(t *testing.T) {
@@ -221,9 +221,9 @@ func TestBlockscoutClient_OPStackJovianBlobGasUsedNotDoubled(t *testing.T) {
 	itemOPStack := blockscoutTxItem{
 		From:         "0xSender111",
 		GasUsed:      "21000",
-		GasPrice:     "1000000000", // 1 gwei -> execution fee = 21e12 wei
+		GasPrice:     "1000000000",     // 1 gwei -> execution fee = 21e12 wei
 		L1Fee:        "50000000000000", // 50e12 wei
-		BlobGasUsed:  "131072", // Jovian DA footprint
+		BlobGasUsed:  "131072",         // Jovian DA footprint
 		BlobGasPrice: "1000000",
 	}
 
@@ -334,7 +334,7 @@ func TestBlockscoutClient_MissingOperatorFeeNotSilentlyZero(t *testing.T) {
 func TestBlockscoutClient_DecodeL1BlockAttributesCalldata(t *testing.T) {
 	// 1. Valid Isthmus calldata: selector 0x3a4832bc + 160 bytes dummy + scalar=5 (4 bytes) + constant=1000 (8 bytes)
 	prefix160Bytes := strings.Repeat("00", 160)
-	scalarHexIsthmus := "00000005"          // 5
+	scalarHexIsthmus := "00000005"           // 5
 	constantHexIsthmus := "00000000000003e8" // 1000 in hex
 	isthmusInput := "0x3a4832bc" + prefix160Bytes + scalarHexIsthmus + constantHexIsthmus
 
@@ -437,6 +437,3 @@ func TestBlockscoutClient_RealEIP4844Type3TransactionReceipt(t *testing.T) {
 	totalFeeBase := calculateTotalTxFee(item, rawReceipt.From, model.BlockchainNetworkBase)
 	assert.Equal(t, "1815762227155321", totalFeeBase, "On Base (OP Stack), blobGasUsed must not double count as L2 blob fee")
 }
-
-
-

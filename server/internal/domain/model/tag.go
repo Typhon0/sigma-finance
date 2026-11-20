@@ -15,8 +15,8 @@ type Tag struct {
 }
 
 // Implement Entity interface
-func (t Tag) GetID() string              { return t.ID }
-func (t Tag) SetID(id string)            { t.ID = id }
+func (t Tag) GetID() string             { return t.ID }
+func (t Tag) SetID(id string)           { t.ID = id }
 func (t Tag) GetCreatedAt() time.Time   { return time.Time{} }
 func (t Tag) SetCreatedAt(tm time.Time) {}
 func (t Tag) GetUpdatedAt() time.Time   { return time.Time{} }

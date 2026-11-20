@@ -71,5 +71,3 @@ func TestAdapterRegistry_BitcoinFailoverEndpoints(t *testing.T) {
 	assert.Equal(t, "https://mempool.space/api", epsCustom[1])
 	assert.Equal(t, "https://blockstream.info/api", epsCustom[2])
 }
-
-

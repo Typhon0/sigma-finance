@@ -77,15 +77,15 @@ type EsploraTx struct {
 
 // Client provides resilient Bitcoin indexing across Mempool.space and Blockstream
 type Client struct {
-	endpoints         []string
-	httpClient        *http.Client
-	rateLimiter       *rate.Limiter
-	gapLimit          int
-	maxTxs            int
-	cooldowns         map[string]time.Time
-	cooldownMu        sync.RWMutex
-	activeAddrCache   map[string][]string
-	cacheMu           sync.RWMutex
+	endpoints       []string
+	httpClient      *http.Client
+	rateLimiter     *rate.Limiter
+	gapLimit        int
+	maxTxs          int
+	cooldowns       map[string]time.Time
+	cooldownMu      sync.RWMutex
+	activeAddrCache map[string][]string
+	cacheMu         sync.RWMutex
 }
 
 func NewClient(endpoints ...string) *Client {
@@ -702,18 +702,18 @@ func (c *Client) FetchTransfers(ctx context.Context, descriptor string, cursor s
 			}
 
 			metaMap := map[string]interface{}{
-				"txid":                   tx.TxID,
-				"descriptor":             descriptor,
-				"fee":                    tx.Fee,
-				"wallet_fee":             walletFee,
-				"confirmed":              tx.Status.Confirmed,
-				"blockHeight":            tx.Status.BlockHeight,
-				"spent":                  walletSpentSat,
-				"received":               walletReceivedSat,
-				"total_tx_input_sat":     totalTxInputSat,
-				"is_collaborative":       isCollaborative,
-				"fee_allocation_method":  "exact_sole_payer",
-				"fee_is_estimated":       false,
+				"txid":                  tx.TxID,
+				"descriptor":            descriptor,
+				"fee":                   tx.Fee,
+				"wallet_fee":            walletFee,
+				"confirmed":             tx.Status.Confirmed,
+				"blockHeight":           tx.Status.BlockHeight,
+				"spent":                 walletSpentSat,
+				"received":              walletReceivedSat,
+				"total_tx_input_sat":    totalTxInputSat,
+				"is_collaborative":      isCollaborative,
+				"fee_allocation_method": "exact_sole_payer",
+				"fee_is_estimated":      false,
 			}
 			if isCollaborative {
 				metaMap["fee_allocation_method"] = "proportional_input_value"
@@ -742,18 +742,18 @@ func (c *Client) FetchTransfers(ctx context.Context, descriptor string, cursor s
 		} else if walletReceivedSat > walletSpentSat {
 			netInflow := walletReceivedSat - walletSpentSat
 			metaMap := map[string]interface{}{
-				"txid":                   tx.TxID,
-				"descriptor":             descriptor,
-				"fee":                    tx.Fee,
-				"wallet_fee":             0,
-				"confirmed":              tx.Status.Confirmed,
-				"blockHeight":            tx.Status.BlockHeight,
-				"spent":                  walletSpentSat,
-				"received":               walletReceivedSat,
-				"total_tx_input_sat":     totalTxInputSat,
-				"is_collaborative":       isCollaborative,
-				"fee_allocation_method":  "exact_sole_payer",
-				"fee_is_estimated":       false,
+				"txid":                  tx.TxID,
+				"descriptor":            descriptor,
+				"fee":                   tx.Fee,
+				"wallet_fee":            0,
+				"confirmed":             tx.Status.Confirmed,
+				"blockHeight":           tx.Status.BlockHeight,
+				"spent":                 walletSpentSat,
+				"received":              walletReceivedSat,
+				"total_tx_input_sat":    totalTxInputSat,
+				"is_collaborative":      isCollaborative,
+				"fee_allocation_method": "exact_sole_payer",
+				"fee_is_estimated":      false,
 			}
 			if isCollaborative {
 				metaMap["fee_allocation_method"] = "proportional_input_value"

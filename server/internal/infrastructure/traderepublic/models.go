@@ -93,8 +93,8 @@ func (sc *SessionCookies) ToCookies() []*http.Cookie {
 
 // AccountPairsResponse is returned for subscription {"type": "accountPairs"}
 type AccountPairsResponse struct {
-	AuthAccountID string             `json:"authAccountId"`
-	Accounts      []AccountPairItem  `json:"accounts"`
+	AuthAccountID string            `json:"authAccountId"`
+	Accounts      []AccountPairItem `json:"accounts"`
 }
 
 // AccountPairItem represents a pair of securities and cash account IDs
@@ -109,9 +109,9 @@ type AccountPairItem struct {
 
 // CashResponse is returned for subscription {"type": "cash"}
 type CashItem struct {
-	AccountNumber string          `json:"accountNumber"`
-	CurrencyID    string          `json:"currencyId"`
-	Amount        decimal.Decimal `json:"amount"`
+	AccountNumber string           `json:"accountNumber"`
+	CurrencyID    string           `json:"currencyId"`
+	Amount        decimal.Decimal  `json:"amount"`
 	Available     *decimal.Decimal `json:"available,omitempty"`
 }
 
@@ -187,15 +187,15 @@ type TimelineItem struct {
 	ID           string          `json:"id"`
 	SourceStream string          `json:"sourceStream,omitempty"`
 	Timestamp    string          `json:"timestamp"` // ISO 8601 or epoch millis
-	Title     string          `json:"title"`
-	Subtitle  string          `json:"subtitle,omitempty"`
-	EventType string          `json:"eventType,omitempty"` // e.g. "TRADING_BUY", "BANK_TRANSACTION_DEPOSIT", "SSP_EXECUTION"
-	Status    string          `json:"status,omitempty"`    // e.g. "EXECUTED", "SETTLED", "PENDING", "CANCELED"
-	Amount    *AmountItem     `json:"amount,omitempty"`
-	SubAmount *AmountItem     `json:"subAmount,omitempty"`
-	Icon      string          `json:"icon,omitempty"`
-	Action    *TimelineAction `json:"action,omitempty"`
-	Data      json.RawMessage `json:"data,omitempty"`
+	Title        string          `json:"title"`
+	Subtitle     string          `json:"subtitle,omitempty"`
+	EventType    string          `json:"eventType,omitempty"` // e.g. "TRADING_BUY", "BANK_TRANSACTION_DEPOSIT", "SSP_EXECUTION"
+	Status       string          `json:"status,omitempty"`    // e.g. "EXECUTED", "SETTLED", "PENDING", "CANCELED"
+	Amount       *AmountItem     `json:"amount,omitempty"`
+	SubAmount    *AmountItem     `json:"subAmount,omitempty"`
+	Icon         string          `json:"icon,omitempty"`
+	Action       *TimelineAction `json:"action,omitempty"`
+	Data         json.RawMessage `json:"data,omitempty"`
 }
 
 // AmountItem represents a monetary amount in an event
@@ -212,14 +212,14 @@ type TimelineAction struct {
 
 // TimelineDetailV2Response is returned for {"type": "timelineDetailV2", "id": "..."}
 type TimelineDetailV2Response struct {
-	ID       string                 `json:"id"`
+	ID       string                  `json:"id"`
 	Sections []TimelineDetailSection `json:"sections"`
 }
 
 // TimelineDetailSection represents a section in timeline details
 type TimelineDetailSection struct {
-	Type     string                   `json:"type"` // "title", "table", "documents", "text"
-	Title    string                   `json:"title,omitempty"`
+	Type     string                  `json:"type"` // "title", "table", "documents", "text"
+	Title    string                  `json:"title,omitempty"`
 	Elements []TimelineDetailElement `json:"elements,omitempty"`
 }
 
@@ -233,5 +233,5 @@ type TimelineDetailElement struct {
 // SyncCursors contains stream-specific independent pagination cursors
 type SyncCursors struct {
 	TimelineTransactionsCursor *string `json:"timeline_transactions_cursor,omitempty"`
-	TimelineActivityLogCursor   *string `json:"timeline_activity_log_cursor,omitempty"`
+	TimelineActivityLogCursor  *string `json:"timeline_activity_log_cursor,omitempty"`
 }

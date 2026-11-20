@@ -264,4 +264,3 @@ func zipCSVFixture(t *testing.T, name string, content string) []byte {
 	}
 	return buf.Bytes()
 }
-

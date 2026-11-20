@@ -165,7 +165,7 @@ func TestClient_FetchTransfers_MultiAddressAggregation(t *testing.T) {
 				{Prevout: &EsploraVout{ScriptpubkeyAddress: "bc1q_addr2", Value: 50000}},
 			},
 			Vout: []EsploraVout{
-				{ScriptpubkeyAddress: "bc1q_addr3", Value: 40000},       // change back to wallet
+				{ScriptpubkeyAddress: "bc1q_addr3", Value: 40000},               // change back to wallet
 				{ScriptpubkeyAddress: "bc1q_external_recipient", Value: 108000}, // external payment
 			},
 		}
@@ -291,7 +291,7 @@ func TestBitcoinClient_CollaborativeTx_BigIntSafeMath(t *testing.T) {
 			TxID: "tx-huge-coinjoin-999",
 			Fee:  100000000, // 1 BTC fee
 			Vin: []EsploraVin{
-				{Prevout: &EsploraVout{ScriptpubkeyAddress: "bc1q_whale", Value: 2000000000000}}, // 20,000 BTC
+				{Prevout: &EsploraVout{ScriptpubkeyAddress: "bc1q_whale", Value: 2000000000000}},      // 20,000 BTC
 				{Prevout: &EsploraVout{ScriptpubkeyAddress: "bc1q_peer_whale", Value: 2000000000000}}, // 20,000 BTC
 			},
 			Vout: []EsploraVout{
@@ -333,7 +333,7 @@ func TestBitcoinClient_PayJoinCollaborativeTx(t *testing.T) {
 				{Prevout: &EsploraVout{ScriptpubkeyAddress: "bc1q_external_sender", Value: 150000}},
 			},
 			Vout: []EsploraVout{
-				{ScriptpubkeyAddress: "bc1q_wallet_payjoin", Value: 40000},       // change back to wallet
+				{ScriptpubkeyAddress: "bc1q_wallet_payjoin", Value: 40000},      // change back to wallet
 				{ScriptpubkeyAddress: "bc1q_merchant_recipient", Value: 150000}, // payment to merchant
 			},
 		}
@@ -417,9 +417,6 @@ func TestBitcoinClient_InternalUtxoConsolidation(t *testing.T) {
 	assert.Equal(t, "exact_sole_payer", meta["fee_allocation_method"])
 	assert.Equal(t, false, meta["fee_is_estimated"])
 }
-
-
-
 
 func TestBitcoinClient_FeeAllocationRounding(t *testing.T) {
 	// Rounding scenario:
@@ -558,11 +555,3 @@ func TestClient_AntiPositionWiping_OnTotalExplorerOutage(t *testing.T) {
 	assert.Equal(t, uint64(0), satInit)
 	assert.Nil(t, addrsInit)
 }
-
-
-
-
-
-
-
-

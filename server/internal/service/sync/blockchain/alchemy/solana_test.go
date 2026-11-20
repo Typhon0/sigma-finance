@@ -83,4 +83,3 @@ func TestParseSolanaTransactionMovements_DexSwap(t *testing.T) {
 	assert.Equal(t, "575112613", usdcMov.RawAmount) // -575.112613 USDC
 	assert.Equal(t, 6, usdcMov.Decimals)
 }
-

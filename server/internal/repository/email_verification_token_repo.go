@@ -33,8 +33,6 @@ func NewEmailVerificationTokenRepository(db bun.IDB) *EmailVerificationTokenRepo
 	}
 }
 
-
-
 // GetByToken retrieves an email verification token by its token value
 func (r *EmailVerificationTokenRepository) GetByToken(ctx context.Context, token string) (*model.EmailVerificationToken, error) {
 	return r.FindOneBy(ctx, ByColumn("token", token))

@@ -80,7 +80,6 @@ func NewPositionRepository(db bun.IDB) *PositionRepository {
 	}
 }
 
-
 // GetByPortfolioAndAsset retrieves a position by portfolio and asset IDs
 func (r *PositionRepository) GetByPortfolioAndAsset(ctx context.Context, portfolioID, assetID string) (*model.Position, error) {
 	var position model.Position

@@ -46,10 +46,10 @@ type Config struct {
 }
 
 type Source struct {
-	baseURL    string
-	market     string
-	client     *http.Client
-	cmcAPIKey  string
+	baseURL   string
+	market    string
+	client    *http.Client
+	cmcAPIKey string
 }
 
 func NewSource(cfg Config) *Source {
@@ -209,7 +209,7 @@ func (s *Source) fetchSymbol(
 			if err != nil {
 				return err
 			}
-			
+
 			mu.Lock()
 			allCandles = append(allCandles, candles...)
 			mu.Unlock()
@@ -280,14 +280,14 @@ func (s *Source) fetchDailyRange(
 				return fmt.Errorf("parse daily archive %s: %w", d.Format("2006-01-02"), err)
 			}
 			filtered := filterRange(rows, d, d)
-			
+
 			mu.Lock()
 			allCandles = append(allCandles, filtered...)
 			mu.Unlock()
 			return nil
 		})
 	}
-	
+
 	if err := eg.Wait(); err != nil {
 		return nil, err
 	}
@@ -306,7 +306,7 @@ func emitCandles(
 	})
 	for _, candle := range candles {
 		key := sources.CanonicalKey(candle)
-		
+
 		seenMu.Lock()
 		_, exists := seen[key]
 		if !exists {
@@ -731,12 +731,12 @@ func (s *Source) DiscoverUniverse(ctx context.Context, count int) (*sources.Univ
 	if isLocal {
 		for _, c := range candidates {
 			uniSymbols = append(uniSymbols, sources.UniverseSymbol{
-InstrumentID: instrumentID(c.symbol),
-Symbol:       c.symbol,
-BaseAsset:    c.baseAsset,
-QuoteAsset:   "USDT",
-AssetType:    "CRYPTO",
-})
+				InstrumentID: instrumentID(c.symbol),
+				Symbol:       c.symbol,
+				BaseAsset:    c.baseAsset,
+				QuoteAsset:   "USDT",
+				AssetType:    "CRYPTO",
+			})
 			if len(uniSymbols) >= count {
 				break
 			}
@@ -783,23 +783,23 @@ AssetType:    "CRYPTO",
 			}
 			verified++
 			uniSymbols = append(uniSymbols, sources.UniverseSymbol{
-InstrumentID: instrumentID(c.symbol),
-Symbol:       c.symbol,
-BaseAsset:    c.baseAsset,
-QuoteAsset:   "USDT",
-AssetType:    "CRYPTO",
-})
+				InstrumentID: instrumentID(c.symbol),
+				Symbol:       c.symbol,
+				BaseAsset:    c.baseAsset,
+				QuoteAsset:   "USDT",
+				AssetType:    "CRYPTO",
+			})
 			if len(uniSymbols) >= count {
 				break
 			}
 		}
 		log.Printf("Discovered %d verified symbols via CMC+binance.vision (probed %d candidates, %d had archives, top 3: %s)",
-len(uniSymbols), len(candidates), verified, topN(uniSymbols, 3))
+			len(uniSymbols), len(candidates), verified, topN(uniSymbols, 3))
 	}
 
 	if len(uniSymbols) < count {
 		return nil, fmt.Errorf("CMC discovery found only %d verified symbols, need exactly %d; increase over-fetch or check CMC_API_KEY",
-len(uniSymbols), count)
+			len(uniSymbols), count)
 	}
 
 	return &sources.Universe{

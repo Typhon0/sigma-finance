@@ -19,7 +19,7 @@ func mapAlertToGQL(alert *repository.UserAlert) *gqlModel.Alert {
 		ConditionType:       mapServiceConditionTypeToGQL(alert.ConditionType),
 		IsActive:            alert.IsActive,
 		CreatedAt:           alert.CreatedAt,
-		UpdatedAt:           alert.CreatedAt, // Use CreatedAt as UpdatedAt since we don't have UpdatedAt field
+		UpdatedAt:           alert.CreatedAt,                      // Use CreatedAt as UpdatedAt since we don't have UpdatedAt field
 		NotificationMethods: []gqlModel.AlertNotificationMethod{}, // Default empty slice
 	}
 

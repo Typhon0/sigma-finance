@@ -36,8 +36,6 @@ func NewSessionRepository(db bun.IDB) *SessionRepository {
 	}
 }
 
-
-
 // GetByToken retrieves a session by its token
 func (r *SessionRepository) GetByToken(ctx context.Context, token string) (*model.Session, error) {
 	return r.FindOneBy(ctx, ByColumn("token", token))

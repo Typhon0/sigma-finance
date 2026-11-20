@@ -28,4 +28,3 @@ func newSourceForProvider(provider string, baseURL string) (sources.CandleSource
 		return nil, fmt.Errorf("unsupported source_provider=%s", strings.TrimSpace(provider))
 	}
 }
-

@@ -212,8 +212,6 @@ func TestActivityClassifier_SolanaRentRecoveryNotClassifiedAsSwap(t *testing.T) 
 	assert.Len(t, res.Transactions, 2)
 }
 
-
-
 func TestActivityClassifier_ComplexDeFiToReviewQueue(t *testing.T) {
 	classifier := NewActivityClassifier()
 	userAddr := "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
@@ -267,7 +265,7 @@ func TestActivityClassifier_WSOLUnwrapClassification(t *testing.T) {
 			ToAddress:       "",
 			TokenAddress:    &wsolMint,
 			FormattedAmount: decimal.NewFromFloat(1.0), // 1 WSOL out
-			FeeAmount:       "5000",                   // 5000 lamports fee
+			FeeAmount:       "5000",                    // 5000 lamports fee
 			RawMetadata:     rawWSOLMeta,
 			ExecutedAt:      time.Now().UTC(),
 		},

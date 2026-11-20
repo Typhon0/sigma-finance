@@ -16,23 +16,23 @@ import (
 )
 
 type mockSyncService struct {
-	registerAdapterFn              func(adapter syncservice.SyncAdapter)
-	triggerSyncFn                  func(ctx context.Context, connectionID string) (*model.SyncRun, error)
-	triggerAccountSyncFn           func(ctx context.Context, accountID string) (*model.SyncRun, error)
-	registerCredentialFn           func(ctx context.Context, userID string, provider string, rawJSON string) (*model.SyncCredential, error)
-	linkAccountFn                  func(ctx context.Context, connectionID string, accountID string, autoCreate bool) (*model.SyncConnection, error)
-	getConnectionFn                func(ctx context.Context, connectionID string) (*model.SyncConnection, error)
-	listConnectionsFn              func(ctx context.Context, portfolioID string) ([]*model.SyncConnection, error)
-	listCredentialsFn              func(ctx context.Context, userID string) ([]*model.SyncCredential, error)
-	getAdapterFn                   func(provider string) (syncservice.SyncAdapter, bool)
-	generateAggregatorLinkFn       func(ctx context.Context, userID string, provider string, redirectURL string) (*syncservice.AggregatorAuthSession, error)
-	completeAggregatorAuthFn       func(ctx context.Context, userID string, connectionID string, sessionToken string) ([]*model.SyncConnection, error)
-	discoverAndCreateConnectionsFn func(ctx context.Context, userID string, portfolioID string, provider string) ([]*model.SyncConnection, error)
-	initiateTradeRepublicAuthFn    func(ctx context.Context, userID string, portfolioID string, phoneNumber string, pin string) (*model.SyncAuthSession, error)
-	pollTradeRepublicAuthFn        func(ctx context.Context, userID string, authSessionID string) (*model.SyncAuthSession, []*model.SyncConnection, error)
+	registerAdapterFn               func(adapter syncservice.SyncAdapter)
+	triggerSyncFn                   func(ctx context.Context, connectionID string) (*model.SyncRun, error)
+	triggerAccountSyncFn            func(ctx context.Context, accountID string) (*model.SyncRun, error)
+	registerCredentialFn            func(ctx context.Context, userID string, provider string, rawJSON string) (*model.SyncCredential, error)
+	linkAccountFn                   func(ctx context.Context, connectionID string, accountID string, autoCreate bool) (*model.SyncConnection, error)
+	getConnectionFn                 func(ctx context.Context, connectionID string) (*model.SyncConnection, error)
+	listConnectionsFn               func(ctx context.Context, portfolioID string) ([]*model.SyncConnection, error)
+	listCredentialsFn               func(ctx context.Context, userID string) ([]*model.SyncCredential, error)
+	getAdapterFn                    func(provider string) (syncservice.SyncAdapter, bool)
+	generateAggregatorLinkFn        func(ctx context.Context, userID string, provider string, redirectURL string) (*syncservice.AggregatorAuthSession, error)
+	completeAggregatorAuthFn        func(ctx context.Context, userID string, connectionID string, sessionToken string) ([]*model.SyncConnection, error)
+	discoverAndCreateConnectionsFn  func(ctx context.Context, userID string, portfolioID string, provider string) ([]*model.SyncConnection, error)
+	initiateTradeRepublicAuthFn     func(ctx context.Context, userID string, portfolioID string, phoneNumber string, pin string) (*model.SyncAuthSession, error)
+	pollTradeRepublicAuthFn         func(ctx context.Context, userID string, authSessionID string) (*model.SyncAuthSession, []*model.SyncConnection, error)
 	listEnableBankingInstitutionsFn func(ctx context.Context, userID string, country string) ([]enablebanking.ASPSP, error)
-	initiateEnableBankingAuthFn    func(ctx context.Context, userID string, portfolioID string, aspspName string, aspspCountry string, redirectURL string) (*syncservice.EnableBankingAuthSession, error)
-	completeEnableBankingAuthFn    func(ctx context.Context, userID string, portfolioID string, code string, state string) ([]*model.SyncConnection, error)
+	initiateEnableBankingAuthFn     func(ctx context.Context, userID string, portfolioID string, aspspName string, aspspCountry string, redirectURL string) (*syncservice.EnableBankingAuthSession, error)
+	completeEnableBankingAuthFn     func(ctx context.Context, userID string, portfolioID string, code string, state string) ([]*model.SyncConnection, error)
 }
 
 func (m *mockSyncService) RegisterAdapter(adapter syncservice.SyncAdapter) {
@@ -207,24 +207,24 @@ func (m *mockSyncService) PollTradeRepublicAuth(ctx context.Context, userID stri
 		return m.pollTradeRepublicAuthFn(ctx, userID, authSessionID)
 	}
 	return &model.SyncAuthSession{
-		ID:          authSessionID,
-		UserID:      userID,
-		PortfolioID: "p-1",
-		Provider:    model.SyncProviderTradeRepublic,
-		Status:      model.SyncAuthSessionStatusCompleted,
-		ExpiresAt:   time.Now().Add(5 * time.Minute),
-	}, []*model.SyncConnection{
-		{
-			ID:                    "conn-tr-1",
-			UserID:                userID,
-			PortfolioID:           "p-1",
-			Provider:              model.SyncProviderTradeRepublic,
-			ExternalInstitutionID: "TR",
-			ExternalAccountID:     "acc-tr-1",
-			InstitutionName:       "Trade Republic",
-			SyncStatus:            model.SyncConnectionStatusIdle,
-		},
-	}, nil
+			ID:          authSessionID,
+			UserID:      userID,
+			PortfolioID: "p-1",
+			Provider:    model.SyncProviderTradeRepublic,
+			Status:      model.SyncAuthSessionStatusCompleted,
+			ExpiresAt:   time.Now().Add(5 * time.Minute),
+		}, []*model.SyncConnection{
+			{
+				ID:                    "conn-tr-1",
+				UserID:                userID,
+				PortfolioID:           "p-1",
+				Provider:              model.SyncProviderTradeRepublic,
+				ExternalInstitutionID: "TR",
+				ExternalAccountID:     "acc-tr-1",
+				InstitutionName:       "Trade Republic",
+				SyncStatus:            model.SyncConnectionStatusIdle,
+			},
+		}, nil
 }
 
 func (m *mockSyncService) DiscoverAndCreateConnections(ctx context.Context, userID string, portfolioID string, provider string) ([]*model.SyncConnection, error) {
@@ -301,26 +301,26 @@ func (m *mockSyncService) InitiateWoobAuth(ctx context.Context, userID, portfoli
 
 func (m *mockSyncService) PollWoobAuth(ctx context.Context, userID, authSessionID, otpCode string) (*model.SyncAuthSession, []*model.SyncConnection, error) {
 	return &model.SyncAuthSession{
-		ID:          authSessionID,
-		UserID:      userID,
-		PortfolioID: "p-1",
-		Provider:    model.SyncProviderWoob,
-		Status:      model.SyncAuthSessionStatusCompleted,
-		ExpiresAt:   time.Now().Add(5 * time.Minute),
-	}, []*model.SyncConnection{
-		{
-			ID:                    "conn-woob-1",
-			UserID:                userID,
-			PortfolioID:           "p-1",
-			Provider:              model.SyncProviderWoob,
-			ExternalInstitutionID: "fortuneo",
-			ExternalAccountID:     "acc-woob-1",
-			InstitutionName:       "Fortuneo",
-			SyncStatus:            model.SyncConnectionStatusIdle,
-			CreatedAt:             time.Now(),
-			UpdatedAt:             time.Now(),
-		},
-	}, nil
+			ID:          authSessionID,
+			UserID:      userID,
+			PortfolioID: "p-1",
+			Provider:    model.SyncProviderWoob,
+			Status:      model.SyncAuthSessionStatusCompleted,
+			ExpiresAt:   time.Now().Add(5 * time.Minute),
+		}, []*model.SyncConnection{
+			{
+				ID:                    "conn-woob-1",
+				UserID:                userID,
+				PortfolioID:           "p-1",
+				Provider:              model.SyncProviderWoob,
+				ExternalInstitutionID: "fortuneo",
+				ExternalAccountID:     "acc-woob-1",
+				InstitutionName:       "Fortuneo",
+				SyncStatus:            model.SyncConnectionStatusIdle,
+				CreatedAt:             time.Now(),
+				UpdatedAt:             time.Now(),
+			},
+		}, nil
 }
 
 func createAuthContext(userID string) context.Context {
@@ -783,24 +783,24 @@ func TestGraphQL_TradeRepublicAuthResolvers(t *testing.T) {
 				assert.Equal(t, "sas-test-1", authSessionID)
 
 				return &model.SyncAuthSession{
-					ID:          authSessionID,
-					UserID:      userID,
-					PortfolioID: "port-456",
-					Provider:    model.SyncProviderTradeRepublic,
-					Status:      model.SyncAuthSessionStatusCompleted,
-					ExpiresAt:   time.Now().Add(60 * time.Second),
-				}, []*model.SyncConnection{
-					{
-						ID:                    "conn-tr-1",
-						UserID:                userID,
-						PortfolioID:           "port-456",
-						Provider:              model.SyncProviderTradeRepublic,
-						ExternalInstitutionID: "TR",
-						ExternalAccountID:     "SEC-CTO-1",
-						InstitutionName:       "Trade Republic",
-						SyncStatus:            model.SyncConnectionStatusIdle,
-					},
-				}, nil
+						ID:          authSessionID,
+						UserID:      userID,
+						PortfolioID: "port-456",
+						Provider:    model.SyncProviderTradeRepublic,
+						Status:      model.SyncAuthSessionStatusCompleted,
+						ExpiresAt:   time.Now().Add(60 * time.Second),
+					}, []*model.SyncConnection{
+						{
+							ID:                    "conn-tr-1",
+							UserID:                userID,
+							PortfolioID:           "port-456",
+							Provider:              model.SyncProviderTradeRepublic,
+							ExternalInstitutionID: "TR",
+							ExternalAccountID:     "SEC-CTO-1",
+							InstitutionName:       "Trade Republic",
+							SyncStatus:            model.SyncConnectionStatusIdle,
+						},
+					}, nil
 			},
 		}
 

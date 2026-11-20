@@ -94,13 +94,13 @@ func TestWalletResolvers_MapWalletAccountToGQL(t *testing.T) {
 	now := time.Now().UTC()
 	tokenAddr := "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
 	acc := &model.WalletAccount{
-		ID:            "wacc-123",
-		Network:       model.BlockchainNetworkEthereum,
-		AddressOrXpub: "0x1234567890123456789012345678901234567890",
-		IsXpub:        false,
-		Label:         strPtr("Main Vault"),
-		IsActive:      true,
-		HistoryStatus: model.WalletHistoryStatusSynced,
+		ID:              "wacc-123",
+		Network:         model.BlockchainNetworkEthereum,
+		AddressOrXpub:   "0x1234567890123456789012345678901234567890",
+		IsXpub:          false,
+		Label:           strPtr("Main Vault"),
+		IsActive:        true,
+		HistoryStatus:   model.WalletHistoryStatusSynced,
 		CapabilityLevel: model.WalletCapabilityBalanceOnly,
 		Balances: []*model.WalletBalance{
 			{

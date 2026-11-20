@@ -19,13 +19,13 @@ type MonitoringService struct {
 
 // MetricCollector stores and aggregates metrics
 type MetricCollector struct {
-	Name         string                 `json:"name"`
-	Type         MetricType             `json:"type"`
-	Values       []float64              `json:"values"`
-	Timestamps   []time.Time            `json:"timestamps"`
-	Labels       map[string]string      `json:"labels"`
-	Aggregations map[string]float64     `json:"aggregations"`
-	LastUpdated  time.Time              `json:"last_updated"`
+	Name         string             `json:"name"`
+	Type         MetricType         `json:"type"`
+	Values       []float64          `json:"values"`
+	Timestamps   []time.Time        `json:"timestamps"`
+	Labels       map[string]string  `json:"labels"`
+	Aggregations map[string]float64 `json:"aggregations"`
+	LastUpdated  time.Time          `json:"last_updated"`
 }
 
 // MetricType defines the type of metric being collected
@@ -59,7 +59,7 @@ func NewMonitoringService() *MonitoringService {
 
 	// Start event processor
 	go ms.processEvents()
-	
+
 	// Start alert processor
 	go ms.processAlerts()
 
@@ -244,7 +244,7 @@ func (ms *MonitoringService) handleError(event MonitoringEvent) {
 	ms.RecordMetric("errors_total", 1, MetricTypeCounter, labels)
 
 	// Log error details
-	log.Printf("[ERROR] Error recorded: %s in %s (severity: %s) for user %s", 
+	log.Printf("[ERROR] Error recorded: %s in %s (severity: %s) for user %s",
 		errorType, component, severity, event.UserID)
 }
 
@@ -317,7 +317,7 @@ func (ms *MonitoringService) updateAggregations(collector *MetricCollector) {
 	if collector.Type == MetricTypeTiming && n > 0 {
 		sortedValues := make([]float64, n)
 		copy(sortedValues, values)
-		
+
 		// Simple bubble sort for small arrays
 		for i := 0; i < n-1; i++ {
 			for j := 0; j < n-i-1; j++ {
@@ -429,7 +429,7 @@ func (ms *MonitoringService) fireAlert(alert domain.AlertRule, currentValue floa
 		ms.executeAlertAction(action, alert, currentValue)
 	}
 
-	log.Printf("[WARN] Alert fired: %s (current value: %f, threshold: %f)", 
+	log.Printf("[WARN] Alert fired: %s (current value: %f, threshold: %f)",
 		alert.Name, currentValue, alert.Threshold)
 }
 
@@ -437,7 +437,7 @@ func (ms *MonitoringService) fireAlert(alert domain.AlertRule, currentValue floa
 func (ms *MonitoringService) executeAlertAction(action domain.AlertAction, alert domain.AlertRule, currentValue float64) {
 	switch action.Type {
 	case "log":
-		log.Printf("[WARN] ALERT: %s - Current value: %f, Threshold: %f", 
+		log.Printf("[WARN] ALERT: %s - Current value: %f, Threshold: %f",
 			alert.Name, currentValue, alert.Threshold)
 	case "webhook":
 		// Implement webhook notification
@@ -477,7 +477,7 @@ func (ms *MonitoringService) GetHealthStatus() map[string]interface{} {
 		if len(errorMetric.Values) > 0 {
 			recentErrors := 0.0
 			cutoff := time.Now().Add(-5 * time.Minute)
-			
+
 			for i, timestamp := range errorMetric.Timestamps {
 				if timestamp.After(cutoff) {
 					recentErrors += errorMetric.Values[i]

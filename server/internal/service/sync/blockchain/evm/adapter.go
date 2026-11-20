@@ -88,12 +88,12 @@ var NativeAssetSymbols = map[model.BlockchainNetwork]struct{ Symbol, Name string
 
 // EVMAdapter provides keyless balance & activity synchronization for EVM networks
 type EVMAdapter struct {
-	endpoints       map[model.BlockchainNetwork]string
-	httpClient      *http.Client
-	rateLimiter     *rate.Limiter
-	circuitBreaker  *gobreaker.CircuitBreaker
-	blockscout      *BlockscoutClient
-	alchemyAPIKey   string
+	endpoints      map[model.BlockchainNetwork]string
+	httpClient     *http.Client
+	rateLimiter    *rate.Limiter
+	circuitBreaker *gobreaker.CircuitBreaker
+	blockscout     *BlockscoutClient
+	alchemyAPIKey  string
 }
 
 func NewEVMAdapter(alchemyAPIKey string, customEndpoints map[model.BlockchainNetwork]string) *EVMAdapter {
@@ -396,4 +396,3 @@ func (a *EVMAdapter) doRPCPost(ctx context.Context, url string, req jsonRpcReque
 
 	return rpcResp.Result, nil
 }
-

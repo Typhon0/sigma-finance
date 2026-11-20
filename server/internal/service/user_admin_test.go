@@ -164,4 +164,3 @@ func TestAdminService_SelfProtectionAndActions(t *testing.T) {
 		}
 	})
 }
-

@@ -135,4 +135,3 @@ func (r *AccountRepository) GetAccountsByAccountNumber(ctx context.Context, acco
 	}
 	return accounts, nil
 }
-

@@ -126,9 +126,9 @@ type WSClient struct {
 	statesMu       sync.RWMutex
 	cachedPayloads map[int]string
 
-	echoMu         sync.Mutex
-	lastEchoSent   int64
-	echoAckChan    chan int64
+	echoMu       sync.Mutex
+	lastEchoSent int64
+	echoAckChan  chan int64
 
 	closed    chan struct{}
 	closeOnce sync.Once
@@ -479,9 +479,10 @@ func parseWSFrame(text string) (IncomingFrame, error) {
 
 // ApplyDelta applies Trade Republic's custom character-delta patch format for 'D' frames.
 // The delta is a tab-separated sequence of operations:
-//   +<urlencoded literal> -> insert literal at current cursor
-//   =<n>                  -> copy n bytes from previous payload
-//   -<n>                  -> skip n bytes of previous payload
+//
+//	+<urlencoded literal> -> insert literal at current cursor
+//	=<n>                  -> copy n bytes from previous payload
+//	-<n>                  -> skip n bytes of previous payload
 func ApplyDelta(prev string, delta string) (string, error) {
 	chunks := strings.Split(delta, "\t")
 	var out strings.Builder

@@ -132,5 +132,3 @@ func GenerateRSAKeyPair() (string, string, error) {
 
 	return privPEM, certPEM, nil
 }
-
-

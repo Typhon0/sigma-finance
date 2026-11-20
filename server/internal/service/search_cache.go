@@ -29,11 +29,11 @@ type searchCacheKey struct {
 // It evicts the least-recently-used entry when capacity is exceeded and
 // expires entries older than the configured TTL.
 type SearchCache struct {
-	mu       sync.Mutex
-	entries  map[searchCacheKey]*searchCacheEntry
-	lru      []searchCacheKey // most-recently-used at end
-	maxSize  int
-	ttl      time.Duration
+	mu      sync.Mutex
+	entries map[searchCacheKey]*searchCacheEntry
+	lru     []searchCacheKey // most-recently-used at end
+	maxSize int
+	ttl     time.Duration
 }
 
 // NewSearchCache creates a new SearchCache with the given maximum number of entries and TTL.
@@ -172,4 +172,3 @@ func (c *SearchCache) evictLRU() {
 	c.lru = c.lru[1:]
 	delete(c.entries, evictKey)
 }
-

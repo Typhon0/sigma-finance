@@ -8,12 +8,12 @@ import (
 
 // MonitoringConfig holds monitoring configuration
 type MonitoringConfig struct {
-	Enabled                bool                              `json:"enabled"`
-	MetricsRetentionPeriod time.Duration                     `json:"metrics_retention_period"`
+	Enabled                bool                             `json:"enabled"`
+	MetricsRetentionPeriod time.Duration                    `json:"metrics_retention_period"`
 	AlertRules             []domain.AlertRule               `json:"alert_rules"`
 	MarketDataThresholds   domain.MarketDataAlertThresholds `json:"market_data_thresholds"`
-	PerformanceThresholds  PerformanceThresholds             `json:"performance_thresholds"`
-	SamplingRates          SamplingRates                     `json:"sampling_rates"`
+	PerformanceThresholds  PerformanceThresholds            `json:"performance_thresholds"`
+	SamplingRates          SamplingRates                    `json:"sampling_rates"`
 }
 
 // PerformanceThresholds defines performance alert thresholds
@@ -28,11 +28,11 @@ type PerformanceThresholds struct {
 
 // SamplingRates defines sampling rates for different types of events
 type SamplingRates struct {
-	UserInteractions    float64 `json:"user_interactions"`    // 0.0 to 1.0
-	PerformanceMetrics  float64 `json:"performance_metrics"`  // 0.0 to 1.0
-	ErrorEvents         float64 `json:"error_events"`         // 0.0 to 1.0 (usually 1.0)
-	MarketDataUpdates   float64 `json:"market_data_updates"`  // 0.0 to 1.0
-	StateTransitions    float64 `json:"state_transitions"`    // 0.0 to 1.0
+	UserInteractions   float64 `json:"user_interactions"`   // 0.0 to 1.0
+	PerformanceMetrics float64 `json:"performance_metrics"` // 0.0 to 1.0
+	ErrorEvents        float64 `json:"error_events"`        // 0.0 to 1.0 (usually 1.0)
+	MarketDataUpdates  float64 `json:"market_data_updates"` // 0.0 to 1.0
+	StateTransitions   float64 `json:"state_transitions"`   // 0.0 to 1.0
 }
 
 // GetDefaultMonitoringConfig returns default monitoring configuration
@@ -42,27 +42,27 @@ func GetDefaultMonitoringConfig() MonitoringConfig {
 		MetricsRetentionPeriod: 30 * 24 * time.Hour, // 30 days
 		AlertRules:             getDefaultAlertRules(),
 		MarketDataThresholds: domain.MarketDataAlertThresholds{
-			MaxLatency:        5 * time.Second,
-			MinSuccessRate:    0.95,
-			MaxStaleDataAge:   15 * time.Minute,
-			MinQualityScore:   85.0,
-			MaxOutlierRate:    0.05,
-			MinUptimePercent:  99.0,
+			MaxLatency:       5 * time.Second,
+			MinSuccessRate:   0.95,
+			MaxStaleDataAge:  15 * time.Minute,
+			MinQualityScore:  85.0,
+			MaxOutlierRate:   0.05,
+			MinUptimePercent: 99.0,
 		},
 		PerformanceThresholds: PerformanceThresholds{
 			MaxResponseTime:        2 * time.Second,
 			MaxDashboardLoadTime:   3 * time.Second,
 			MaxStateTransitionTime: 500 * time.Millisecond,
-			MaxErrorRate:           0.05, // 5%
-			MinSuccessRate:         0.95, // 95%
+			MaxErrorRate:           0.05,              // 5%
+			MinSuccessRate:         0.95,              // 95%
 			MaxMemoryUsage:         500 * 1024 * 1024, // 500MB
 		},
 		SamplingRates: SamplingRates{
-			UserInteractions:   0.1,  // Sample 10% of user interactions
-			PerformanceMetrics: 0.5,  // Sample 50% of performance metrics
-			ErrorEvents:        1.0,  // Sample 100% of errors
-			MarketDataUpdates:  0.2,  // Sample 20% of market data updates
-			StateTransitions:   1.0,  // Sample 100% of state transitions
+			UserInteractions:   0.1, // Sample 10% of user interactions
+			PerformanceMetrics: 0.5, // Sample 50% of performance metrics
+			ErrorEvents:        1.0, // Sample 100% of errors
+			MarketDataUpdates:  0.2, // Sample 20% of market data updates
+			StateTransitions:   1.0, // Sample 100% of state transitions
 		},
 	}
 }

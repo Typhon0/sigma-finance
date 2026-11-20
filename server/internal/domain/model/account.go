@@ -33,14 +33,14 @@ func (at AccountType) IsValid() bool {
 type Account struct {
 	bun.BaseModel `bun:"table:sigma_finance.accounts,alias:a"`
 
-	ID            string         `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
-	UserID        string         `bun:"user_id,notnull,type:uuid"`
-	PortfolioID   string         `bun:"portfolio_id,notnull,type:uuid"`
-	Name          string         `bun:"name,notnull"`
-	Type          AccountType    `bun:"type,notnull,default:'BROKER'"`
-	TaxWrapper    TaxWrapperType `bun:"tax_wrapper,notnull,default:'STANDARD_TAXABLE'"`
-	Institution   *string        `bun:"institution"`
-	AccountNumber *string        `bun:"account_number"`
+	ID                  string          `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	UserID              string          `bun:"user_id,notnull,type:uuid"`
+	PortfolioID         string          `bun:"portfolio_id,notnull,type:uuid"`
+	Name                string          `bun:"name,notnull"`
+	Type                AccountType     `bun:"type,notnull,default:'BROKER'"`
+	TaxWrapper          TaxWrapperType  `bun:"tax_wrapper,notnull,default:'STANDARD_TAXABLE'"`
+	Institution         *string         `bun:"institution"`
+	AccountNumber       *string         `bun:"account_number"`
 	Currency            Currency        `bun:"currency,type:varchar(3),default:EUR"`
 	SyncProvider        string          `bun:"sync_provider,default:MANUAL"`
 	ExternalID          *string         `bun:"external_id"`

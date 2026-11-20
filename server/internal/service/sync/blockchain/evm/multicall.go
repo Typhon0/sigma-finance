@@ -278,4 +278,3 @@ func DecodeStringOrBytes32(data []byte) string {
 	trimmed := bytes.TrimRight(data, "\x00")
 	return string(trimmed)
 }
-

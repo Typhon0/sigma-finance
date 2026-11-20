@@ -482,7 +482,7 @@ func TestSevenNetworksReconciliation_DetailedProofMatrix(t *testing.T) {
 			// 3. For Bitcoin: mathematically verify that reference balance is the sum of unspent UTXOs in fixture
 			if r.Network == "BITCOIN" {
 				var btcFixture struct {
-					Address   string `json:"address"`
+					Address    string `json:"address"`
 					ChainStats struct {
 						FundedTxoSum int64 `json:"funded_txo_sum"`
 						SpentTxoSum  int64 `json:"spent_txo_sum"`
@@ -509,7 +509,3 @@ func TestSevenNetworksReconciliation_DetailedProofMatrix(t *testing.T) {
 		})
 	}
 }
-
-
-
-

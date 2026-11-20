@@ -111,10 +111,10 @@ func (s *strictCredentialRepo) Delete(ctx context.Context, id string) error {
 }
 
 type captureSymbolProvider struct {
-	id                     string
-	quoteSymbols           []string
-	candleSymbol           []string
-	techIndicatorCalled    int
+	id                  string
+	quoteSymbols        []string
+	candleSymbol        []string
+	techIndicatorCalled int
 }
 
 func (p *captureSymbolProvider) ID() string                   { return p.id }
@@ -146,7 +146,7 @@ func (p *captureSymbolProvider) GetTechnicalIndicator(ctx context.Context, req p
 	p.techIndicatorCalled++
 	return nil, fmt.Errorf("not implemented")
 }
-func (p *captureSymbolProvider) IsInCooldown() bool               { return false }
+func (p *captureSymbolProvider) IsInCooldown() bool { return false }
 func (p *captureSymbolProvider) ValidateCredentials(ctx context.Context, apiKey string) error {
 	return nil
 }
@@ -437,7 +437,7 @@ func (p *keyRequiredCaptureProvider) GetQuote(ctx context.Context, req providers
 func (p *keyRequiredCaptureProvider) GetTechnicalIndicator(ctx context.Context, req providers.TechnicalIndicatorRequest) (*providers.TechnicalIndicatorResponse, error) {
 	return nil, fmt.Errorf("not implemented")
 }
-func (p *keyRequiredCaptureProvider) IsInCooldown() bool            { return false }
+func (p *keyRequiredCaptureProvider) IsInCooldown() bool { return false }
 func (p *keyRequiredCaptureProvider) ValidateCredentials(ctx context.Context, apiKey string) error {
 	return nil
 }

@@ -12,8 +12,8 @@ func TestAlphaVantageCooldown(t *testing.T) {
 	// the mixin and that cooldown methods work through the embedded struct.
 
 	t.Run("constructor initializes CooldownMixin", func(t *testing.T) {
-	provider := NewAlphaVantageProvider().(*AlphaVantageProvider)
-	if provider.IsInCooldown() {
+		provider := NewAlphaVantageProvider().(*AlphaVantageProvider)
+		if provider.IsInCooldown() {
 			t.Fatal("expected provider not to be in cooldown initially")
 		}
 	})

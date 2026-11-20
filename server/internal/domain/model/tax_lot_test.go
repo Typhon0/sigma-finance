@@ -41,8 +41,8 @@ func TestTaxLotAllocation_FIFO(t *testing.T) {
 	m1 := result.Matches[0]
 	assert.Equal(t, "lot-1", m1.LotID)
 	assert.Equal(t, "10", m1.Quantity.String())
-	assert.Equal(t, Money(100000), m1.CostBasis)       // 10 * $100 = $1,000 = 100,000 cents
-	assert.Equal(t, Money(200000), m1.Proceeds)        // 10 * $200 = $2,000 = 200,000 cents
+	assert.Equal(t, Money(100000), m1.CostBasis)        // 10 * $100 = $1,000 = 100,000 cents
+	assert.Equal(t, Money(200000), m1.Proceeds)         // 10 * $200 = $2,000 = 200,000 cents
 	assert.Equal(t, Money(100000), m1.RealizedGainLoss) // +$1,000 gain
 	assert.True(t, m1.IsLongTerm)
 
@@ -50,8 +50,8 @@ func TestTaxLotAllocation_FIFO(t *testing.T) {
 	m2 := result.Matches[1]
 	assert.Equal(t, "lot-2", m2.LotID)
 	assert.Equal(t, "5", m2.Quantity.String())
-	assert.Equal(t, Money(75000), m2.CostBasis)       // 5 * $150 = $750 = 75,000 cents
-	assert.Equal(t, Money(100000), m2.Proceeds)       // 5 * $200 = $1,000 = 100,000 cents
+	assert.Equal(t, Money(75000), m2.CostBasis)        // 5 * $150 = $750 = 75,000 cents
+	assert.Equal(t, Money(100000), m2.Proceeds)        // 5 * $200 = $1,000 = 100,000 cents
 	assert.Equal(t, Money(25000), m2.RealizedGainLoss) // +$250 gain
 	assert.False(t, m2.IsLongTerm)
 
@@ -99,8 +99,8 @@ func TestTaxLotAllocation_HIFO(t *testing.T) {
 
 	// Should match highest cost lot first (Lot 2)
 	assert.Equal(t, "lot-2", result.Matches[0].LotID)
-	assert.Equal(t, Money(90000), result.TotalCostBasis)       // 5 * $180 = $900 = 90,000 cents
-	assert.Equal(t, Money(100000), result.TotalProceeds)       // 5 * $200 = $1,000 = 100,000 cents
+	assert.Equal(t, Money(90000), result.TotalCostBasis)        // 5 * $180 = $900 = 90,000 cents
+	assert.Equal(t, Money(100000), result.TotalProceeds)        // 5 * $200 = $1,000 = 100,000 cents
 	assert.Equal(t, Money(10000), result.TotalRealizedGainLoss) // Minimal gain = $100
 }
 
@@ -190,4 +190,3 @@ func TestNewDispositionsFromAllocation_TaxExempt(t *testing.T) {
 	assert.Equal(t, "port-1", disps[0].PortfolioID)
 	assert.Equal(t, "tx-123", *disps[0].TransactionID)
 }
-

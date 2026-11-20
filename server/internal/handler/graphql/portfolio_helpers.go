@@ -11,31 +11,51 @@ import (
 )
 
 func validatePortfolioName(name string) error {
-    if len(name) < 3 { return fmt.Errorf("name too short") }
-    if len(name) > 100 { return fmt.Errorf("name too long") }
-    return nil
+	if len(name) < 3 {
+		return fmt.Errorf("name too short")
+	}
+	if len(name) > 100 {
+		return fmt.Errorf("name too long")
+	}
+	return nil
 }
 func sanitizePortfolioName(name string) string {
-    out := ""
-    lastSpace := false
-    for _, r := range name {
-        if r == ' ' || r == '\t' || r == '\n' || r == '\r' { if !lastSpace { out += " " }; lastSpace = true; continue }
-        out += string(r); lastSpace = false
-    }
-    return strings.TrimSpace(out)
+	out := ""
+	lastSpace := false
+	for _, r := range name {
+		if r == ' ' || r == '\t' || r == '\n' || r == '\r' {
+			if !lastSpace {
+				out += " "
+			}
+			lastSpace = true
+			continue
+		}
+		out += string(r)
+		lastSpace = false
+	}
+	return strings.TrimSpace(out)
 }
 func sanitizeDescription(desc string) string {
-    if len(desc) > 500 { desc = desc[:500] }
-    return strings.TrimSpace(desc)
+	if len(desc) > 500 {
+		desc = desc[:500]
+	}
+	return strings.TrimSpace(desc)
 }
 func parsePortfolioID(id string) (string, error) {
-    if id == "" { return "", fmt.Errorf("empty id") }
-    return id, nil
+	if id == "" {
+		return "", fmt.Errorf("empty id")
+	}
+	return id, nil
 }
 func (r *mutationResolver) validatePortfolioOwnership(ctx context.Context, portfolioID string, userID string) error {
-    p, err := r.PortfolioService.GetByID(ctx, portfolioID); if err != nil { return err }
-    if p.UserID != userID { return fmt.Errorf("unauthorized: access denied to portfolio") }
-    return nil
+	p, err := r.PortfolioService.GetByID(ctx, portfolioID)
+	if err != nil {
+		return err
+	}
+	if p.UserID != userID {
+		return fmt.Errorf("unauthorized: access denied to portfolio")
+	}
+	return nil
 }
 func handlePortfolioServiceError(err error) error {
 	if err == nil {

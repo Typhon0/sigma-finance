@@ -147,7 +147,7 @@ func (s *Service) EstimateRealEstate(ctx context.Context, input RealEstateEstima
 
 				// Update rental gross yield with estimated value
 				if rentalMarket != nil && rentalMarket.EstimatedMonthlyRent != nil && val > 0 {
-					yield := math.Round(((*rentalMarket.EstimatedMonthlyRent * 12.0) / val * 100.0) * 10.0) / 10.0
+					yield := math.Round(((*rentalMarket.EstimatedMonthlyRent*12.0)/val*100.0)*10.0) / 10.0
 					rentalMarket.EstimatedGrossYield = &yield
 				}
 
@@ -261,7 +261,7 @@ func (s *Service) EstimateRealEstate(ctx context.Context, input RealEstateEstima
 
 			// Update rental yield with estimated value
 			if rentalMarket != nil && rentalMarket.EstimatedMonthlyRent != nil && estVal > 0 {
-				yield := math.Round(((*rentalMarket.EstimatedMonthlyRent * 12.0) / estVal * 100.0) * 10.0) / 10.0
+				yield := math.Round(((*rentalMarket.EstimatedMonthlyRent*12.0)/estVal*100.0)*10.0) / 10.0
 				rentalMarket.EstimatedGrossYield = &yield
 			}
 
@@ -302,7 +302,7 @@ func (s *Service) EstimateRealEstate(ctx context.Context, input RealEstateEstima
 				}
 
 				if rentalMarket != nil && rentalMarket.EstimatedMonthlyRent != nil && val > 0 {
-					yield := math.Round(((*rentalMarket.EstimatedMonthlyRent * 12.0) / val * 100.0) * 10.0) / 10.0
+					yield := math.Round(((*rentalMarket.EstimatedMonthlyRent*12.0)/val*100.0)*10.0) / 10.0
 					rentalMarket.EstimatedGrossYield = &yield
 				}
 

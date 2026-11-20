@@ -278,4 +278,3 @@ func (s *WalletSyncService) fetchHistoricalPrice(ctx context.Context, symbol str
 
 	return decimal.Zero, fmt.Errorf("no historical price found for %s on %s", sym, dateStr)
 }
-

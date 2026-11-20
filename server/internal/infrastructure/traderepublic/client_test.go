@@ -305,4 +305,3 @@ func TestClient_PerAccountSyncLock(t *testing.T) {
 	close(held)
 	wg.Wait()
 }
-

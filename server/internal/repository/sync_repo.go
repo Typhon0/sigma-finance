@@ -447,4 +447,3 @@ func (r *SyncRepository) ListRawEventsByConnection(ctx context.Context, connecti
 		Scan(ctx)
 	return events, err
 }
-

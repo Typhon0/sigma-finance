@@ -142,7 +142,7 @@ func (idx *INSEEIndexer) Estimate(
 
 	ratio := targetVal / baseVal
 	estimatedValue = math.Round(purchasePrice * ratio)
-	evolutionPercent = math.Round(((ratio - 1.0) * 100.0) * 10.0) / 10.0
+	evolutionPercent = math.Round(((ratio-1.0)*100.0)*10.0) / 10.0
 
 	return estimatedValue, evolutionPercent, baseQ, targetQ, nil
 }

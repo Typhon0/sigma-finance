@@ -10,13 +10,13 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
-	"time"
 	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/handler/middleware"
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )

@@ -33,14 +33,14 @@ func (g FXRateGranularity) IsValid() bool {
 type FXRate struct {
 	bun.BaseModel `bun:"table:sigma_finance.fx_rates"`
 
-	ID            string          `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
-	BaseCurrency  Currency        `bun:"base_currency,notnull"`
-	QuoteCurrency Currency        `bun:"quote_currency,notnull"`
-	Rate          decimal.Decimal `bun:"rate,type:decimal(20,10),notnull"`
-	AsOf          time.Time       `bun:"as_of,notnull"`
-	Source        string          `bun:"source,notnull"`
+	ID            string            `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	BaseCurrency  Currency          `bun:"base_currency,notnull"`
+	QuoteCurrency Currency          `bun:"quote_currency,notnull"`
+	Rate          decimal.Decimal   `bun:"rate,type:decimal(20,10),notnull"`
+	AsOf          time.Time         `bun:"as_of,notnull"`
+	Source        string            `bun:"source,notnull"`
 	Granularity   FXRateGranularity `bun:"granularity,notnull"`
-	IsStale       bool            `bun:"is_stale,notnull,default:false"`
-	CreatedAt     time.Time       `bun:"created_at,nullzero,notnull,default:current_timestamp"`
-	UpdatedAt     time.Time       `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
+	IsStale       bool              `bun:"is_stale,notnull,default:false"`
+	CreatedAt     time.Time         `bun:"created_at,nullzero,notnull,default:current_timestamp"`
+	UpdatedAt     time.Time         `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
 }

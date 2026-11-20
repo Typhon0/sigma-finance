@@ -242,7 +242,7 @@ func (s *PricingService) fetchDexScreenerPrice(ctx context.Context, tokenAddr st
 
 	var dexData struct {
 		Pairs []struct {
-			PriceUsd string `json:"priceUsd"`
+			PriceUsd    string `json:"priceUsd"`
 			PriceChange struct {
 				H24 float64 `json:"h24"`
 			} `json:"priceChange"`

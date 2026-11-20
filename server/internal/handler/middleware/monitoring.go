@@ -13,13 +13,13 @@ import (
 func MonitoringMiddleware(monitoringService *service.MonitoringService) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		start := time.Now()
-		
+
 		// Continue with request
 		err := c.Next()
-		
+
 		// Record metrics after request completion
 		duration := time.Since(start).Seconds()
-		
+
 		labels := map[string]string{
 			"method":     c.Method(),
 			"path":       c.Path(),
@@ -49,17 +49,17 @@ func MonitoringMiddleware(monitoringService *service.MonitoringService) fiber.Ha
 func GraphQLMonitoringMiddleware(monitoringService *service.MonitoringService) func(ctx context.Context, next func(ctx context.Context) (interface{}, error)) (interface{}, error) {
 	return func(ctx context.Context, next func(ctx context.Context) (interface{}, error)) (interface{}, error) {
 		start := time.Now()
-		
+
 		// Get operation info from context
 		operationName := getOperationName(ctx)
 		userID := getUserID(ctx)
-		
+
 		// Execute operation
 		result, err := next(ctx)
-		
+
 		// Record metrics
 		duration := time.Since(start).Seconds()
-		
+
 		labels := map[string]string{
 			"operation": operationName,
 			"user_id":   userID,

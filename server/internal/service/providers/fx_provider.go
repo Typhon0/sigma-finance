@@ -314,9 +314,9 @@ func (f *FXProvider) getFrankfurterCandles(ctx context.Context, req CandleReques
 	}
 
 	var response struct {
-		Base      string                         `json:"base"`
-		StartDate string                         `json:"start_date"`
-		EndDate   string                         `json:"end_date"`
+		Base      string                        `json:"base"`
+		StartDate string                        `json:"start_date"`
+		EndDate   string                        `json:"end_date"`
 		Rates     map[string]map[string]float64 `json:"rates"`
 	}
 

@@ -99,14 +99,14 @@ func TestRateLimitingIntegration(t *testing.T) {
 
 			if err != nil {
 				if authErr, ok := err.(*AuthError); ok {
-				switch authErr.Code {
-				case ErrInvalidCredentials:
-					failedAttempts++
-				case ErrAccountLocked:
-					accountLocked = true
-				default:
-					t.Fatalf("Unexpected error code %s: %v", authErr.Code, err)
-				}
+					switch authErr.Code {
+					case ErrInvalidCredentials:
+						failedAttempts++
+					case ErrAccountLocked:
+						accountLocked = true
+					default:
+						t.Fatalf("Unexpected error code %s: %v", authErr.Code, err)
+					}
 				} else {
 					t.Fatalf("Unexpected error type: %v", err)
 				}

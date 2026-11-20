@@ -155,11 +155,11 @@ func TestStockAssetMutationWorkflow(t *testing.T) {
 		currentValue := 500.0
 		purchasePrice := 50.0
 		stockInput := gqlModel.CreateStockInput{
-			Name:         "Duplicate Test Stock",
-			AssetTypeID:  string(*stockAssetType),
-			CurrentValue: &currentValue,
-			Ticker:       "DUPL",
-			Quantity:     10.0,
+			Name:          "Duplicate Test Stock",
+			AssetTypeID:   string(*stockAssetType),
+			CurrentValue:  &currentValue,
+			Ticker:        "DUPL",
+			Quantity:      10.0,
 			QuoteCurrency: "USD",
 		}
 

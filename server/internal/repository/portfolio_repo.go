@@ -26,8 +26,6 @@ func NewPortfolioRepository(db bun.IDB) *PortfolioRepository {
 	}
 }
 
-
-
 // Delete overrides the generic Delete to use the correct primary key column
 func (r *PortfolioRepository) Delete(ctx context.Context, id string) error {
 	res, err := r.db.NewDelete().Model((*model.Portfolio)(nil)).Where("id = ?", id).Exec(ctx)

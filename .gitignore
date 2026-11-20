@@ -60,3 +60,6 @@ env/
 # Graphify knowledge graph outputs
 graphify-out/
 
+
+# npm lockfiles (this repo uses pnpm)
+package-lock.json

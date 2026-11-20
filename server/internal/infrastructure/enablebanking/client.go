@@ -374,4 +374,3 @@ func (c *Client) GetTransactions(ctx context.Context, accountID string, dateFrom
 
 	return &res, nil
 }
-

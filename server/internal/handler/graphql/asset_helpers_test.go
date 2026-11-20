@@ -526,7 +526,7 @@ type stubPositionRepo struct {
 func (s *stubPositionRepo) FindAllBy(ctx context.Context, options ...repository.QueryOption) ([]model.Position, error) {
 	return s.positions, nil
 }
-func (u *stubUOW) TaxLot() repository.ITaxLotRepository     { panic("not implemented") }
+func (u *stubUOW) TaxLot() repository.ITaxLotRepository { panic("not implemented") }
 func (u *stubUOW) TaxLotDisposition() repository.ITaxLotDispositionRepository {
 	panic("not implemented")
 }

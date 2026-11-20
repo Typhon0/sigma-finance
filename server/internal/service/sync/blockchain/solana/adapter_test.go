@@ -66,9 +66,9 @@ func TestSolanaVersionedTransactionV0(t *testing.T) {
 
 			// Account 2 is TokenAccountALT1
 			txRes.Meta.PreTokenBalances = []struct {
-				AccountIndex int    `json:"accountIndex"`
-				Mint         string `json:"mint"`
-				Owner        string `json:"owner"`
+				AccountIndex  int    `json:"accountIndex"`
+				Mint          string `json:"mint"`
+				Owner         string `json:"owner"`
 				UITokenAmount struct {
 					Amount   string `json:"amount"`
 					Decimals int    `json:"decimals"`
@@ -86,9 +86,9 @@ func TestSolanaVersionedTransactionV0(t *testing.T) {
 			}
 
 			txRes.Meta.PostTokenBalances = []struct {
-				AccountIndex int    `json:"accountIndex"`
-				Mint         string `json:"mint"`
-				Owner        string `json:"owner"`
+				AccountIndex  int    `json:"accountIndex"`
+				Mint          string `json:"mint"`
+				Owner         string `json:"owner"`
 				UITokenAmount struct {
 					Amount   string `json:"amount"`
 					Decimals int    `json:"decimals"`
@@ -180,9 +180,9 @@ func TestSolanaAdapter_ClosedTokenAccountWithOmittedOwner(t *testing.T) {
 			// PreTokenBalances has the closed account, but Owner is omitted ("") by RPC
 			// AccountIndex 2 corresponds to ataAddress in AccountKeys
 			txRes.Meta.PreTokenBalances = []struct {
-				AccountIndex int    `json:"accountIndex"`
-				Mint         string `json:"mint"`
-				Owner        string `json:"owner"`
+				AccountIndex  int    `json:"accountIndex"`
+				Mint          string `json:"mint"`
+				Owner         string `json:"owner"`
 				UITokenAmount struct {
 					Amount   string `json:"amount"`
 					Decimals int    `json:"decimals"`
@@ -333,9 +333,9 @@ func TestSolanaAdapter_ClosedWSOLAccountWithNonZeroBalance(t *testing.T) {
 			txRes.Meta.PostBalances = []int64{1012034280, 0, 0}
 
 			txRes.Meta.PreTokenBalances = []struct {
-				AccountIndex int    `json:"accountIndex"`
-				Mint         string `json:"mint"`
-				Owner        string `json:"owner"`
+				AccountIndex  int    `json:"accountIndex"`
+				Mint          string `json:"mint"`
+				Owner         string `json:"owner"`
 				UITokenAmount struct {
 					Amount   string `json:"amount"`
 					Decimals int    `json:"decimals"`
@@ -438,9 +438,9 @@ func TestSolanaAdapter_ClosedWSOLAccount_Token2022(t *testing.T) {
 			txRes.Meta.PostBalances = []int64{507034280, 0, 0}
 
 			txRes.Meta.PreTokenBalances = []struct {
-				AccountIndex int    `json:"accountIndex"`
-				Mint         string `json:"mint"`
-				Owner        string `json:"owner"`
+				AccountIndex  int    `json:"accountIndex"`
+				Mint          string `json:"mint"`
+				Owner         string `json:"owner"`
 				UITokenAmount struct {
 					Amount   string `json:"amount"`
 					Decimals int    `json:"decimals"`
@@ -521,9 +521,9 @@ func TestSolanaAdapter_DiscoversClosedTokenAccountFromHistoricalInstruction(t *t
 
 			// PreTokenBalances with Owner omitted by RPC!
 			txRes.Meta.PreTokenBalances = []struct {
-				AccountIndex int    `json:"accountIndex"`
-				Mint         string `json:"mint"`
-				Owner        string `json:"owner"`
+				AccountIndex  int    `json:"accountIndex"`
+				Mint          string `json:"mint"`
+				Owner         string `json:"owner"`
 				UITokenAmount struct {
 					Amount   string `json:"amount"`
 					Decimals int    `json:"decimals"`
@@ -756,9 +756,9 @@ func TestSolanaAdapter_WSOLDirectLamportsWithoutSyncNative(t *testing.T) {
 			txRes.Meta.PostBalances = []int64{1012034280, 0, 0}
 
 			txRes.Meta.PreTokenBalances = []struct {
-				AccountIndex int    `json:"accountIndex"`
-				Mint         string `json:"mint"`
-				Owner        string `json:"owner"`
+				AccountIndex  int    `json:"accountIndex"`
+				Mint          string `json:"mint"`
+				Owner         string `json:"owner"`
 				UITokenAmount struct {
 					Amount   string `json:"amount"`
 					Decimals int    `json:"decimals"`
@@ -1112,7 +1112,3 @@ func TestSolanaAdapter_IntraTxSolTransfersMarkedIncomplete(t *testing.T) {
 	}
 	assert.True(t, foundIncomplete, "Movement must be marked with wsol_breakdown_incomplete: true")
 }
-
-
-
-

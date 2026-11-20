@@ -33,20 +33,20 @@ type AssetTransfersParams struct {
 }
 
 type RawTransferItem struct {
-	BlockNum        string   `json:"blockNum"`
-	UniqueId        string   `json:"uniqueId"`
-	Hash            string   `json:"hash"`
-	From            string   `json:"from"`
-	To              string   `json:"to"`
-	Value           *float64 `json:"value"`
-	RawContract     struct {
+	BlockNum    string   `json:"blockNum"`
+	UniqueId    string   `json:"uniqueId"`
+	Hash        string   `json:"hash"`
+	From        string   `json:"from"`
+	To          string   `json:"to"`
+	Value       *float64 `json:"value"`
+	RawContract struct {
 		Value   *string `json:"value"`
 		Address *string `json:"address"`
 		Decimal *string `json:"decimal"`
 	} `json:"rawContract"`
-	Asset           *string `json:"asset"`
-	Category        string  `json:"category"`
-	Metadata        struct {
+	Asset    *string `json:"asset"`
+	Category string  `json:"category"`
+	Metadata struct {
 		BlockTimestamp string `json:"blockTimestamp"`
 	} `json:"metadata"`
 }

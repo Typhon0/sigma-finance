@@ -99,23 +99,23 @@ func (w *WalletDevice) SetUpdatedAt(t time.Time) { w.UpdatedAt = t }
 type WalletAccount struct {
 	bun.BaseModel `bun:"table:sigma_finance.wallet_accounts,alias:wacc"`
 
-	ID            string              `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
-	UserID        string              `bun:"user_id,notnull,type:uuid"`
-	DeviceID      *string             `bun:"device_id,type:uuid"`
-	AccountID     *string             `bun:"account_id,type:uuid"`
-	Network       BlockchainNetwork   `bun:"network,notnull"`
-	AddressOrXpub string              `bun:"address_or_xpub,notnull"`
-	IsXpub        bool                `bun:"is_xpub,notnull,default:false"`
-	Label         *string             `bun:"label"`
-	IsActive      bool                `bun:"is_active,notnull,default:true"`
+	ID                  string                `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	UserID              string                `bun:"user_id,notnull,type:uuid"`
+	DeviceID            *string               `bun:"device_id,type:uuid"`
+	AccountID           *string               `bun:"account_id,type:uuid"`
+	Network             BlockchainNetwork     `bun:"network,notnull"`
+	AddressOrXpub       string                `bun:"address_or_xpub,notnull"`
+	IsXpub              bool                  `bun:"is_xpub,notnull,default:false"`
+	Label               *string               `bun:"label"`
+	IsActive            bool                  `bun:"is_active,notnull,default:true"`
 	LastSyncAt          *time.Time            `bun:"last_sync_at"`
 	SyncCursor          *string               `bun:"sync_cursor"`
 	HistoryStatus       WalletHistoryStatus   `bun:"history_status,notnull,default:'PENDING'"`
 	CapabilityLevel     WalletCapabilityLevel `bun:"capability_level,notnull,default:'BALANCE_ONLY'"`
 	DiscoveredAddresses *string               `bun:"discovered_addresses,type:jsonb"`
 	LastSyncError       *string               `bun:"last_sync_error"`
-	CreatedAt     time.Time           `bun:"created_at,nullzero,notnull,default:current_timestamp"`
-	UpdatedAt     time.Time           `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
+	CreatedAt           time.Time             `bun:"created_at,nullzero,notnull,default:current_timestamp"`
+	UpdatedAt           time.Time             `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
 
 	// Relations
 	User       *User             `bun:"rel:belongs-to,join:user_id=id"`
@@ -173,29 +173,29 @@ func (w *WalletAccount) Validate() error {
 type WalletBalance struct {
 	bun.BaseModel `bun:"table:sigma_finance.wallet_balances,alias:wb"`
 
-	ID                string          `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
-	WalletAccountID   string          `bun:"wallet_account_id,notnull,type:uuid"`
-	InstrumentID      *string         `bun:"instrument_id,type:uuid"`
-	AssetID           *string         `bun:"asset_id,type:uuid"`
-	TokenAddress      *string         `bun:"token_address"`
-	Symbol            string          `bun:"symbol,notnull"`
-	Name              string          `bun:"name"`
-	Decimals          int             `bun:"decimals,notnull,default:18"`
-	RawBalance        string          `bun:"raw_balance,type:numeric(78,0),notnull,default:0"`
-	FormattedQuantity decimal.Decimal `bun:"formatted_quantity,type:decimal(36,18),notnull,default:0"`
-	IsSpam            bool            `bun:"is_spam,notnull,default:false"`
-	IsHidden          bool            `bun:"is_hidden,notnull,default:false"`
-	IsStale           bool            `bun:"is_stale,notnull,default:false"`
-	CostBasisPerUnit  *decimal.Decimal `bun:"cost_basis_per_unit,type:decimal(36,18)"`
-	CostBasisCurrency string           `bun:"cost_basis_currency,type:varchar(10),default:USD"`
-	CostBasisType     string           `bun:"cost_basis_type,type:varchar(30),default:UNRECORDED"`
+	ID                 string           `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	WalletAccountID    string           `bun:"wallet_account_id,notnull,type:uuid"`
+	InstrumentID       *string          `bun:"instrument_id,type:uuid"`
+	AssetID            *string          `bun:"asset_id,type:uuid"`
+	TokenAddress       *string          `bun:"token_address"`
+	Symbol             string           `bun:"symbol,notnull"`
+	Name               string           `bun:"name"`
+	Decimals           int              `bun:"decimals,notnull,default:18"`
+	RawBalance         string           `bun:"raw_balance,type:numeric(78,0),notnull,default:0"`
+	FormattedQuantity  decimal.Decimal  `bun:"formatted_quantity,type:decimal(36,18),notnull,default:0"`
+	IsSpam             bool             `bun:"is_spam,notnull,default:false"`
+	IsHidden           bool             `bun:"is_hidden,notnull,default:false"`
+	IsStale            bool             `bun:"is_stale,notnull,default:false"`
+	CostBasisPerUnit   *decimal.Decimal `bun:"cost_basis_per_unit,type:decimal(36,18)"`
+	CostBasisCurrency  string           `bun:"cost_basis_currency,type:varchar(10),default:USD"`
+	CostBasisType      string           `bun:"cost_basis_type,type:varchar(30),default:UNRECORDED"`
 	AutoEstimatedBasis *decimal.Decimal `bun:"auto_estimated_basis,type:decimal(36,18)"`
-	AcquiredAt        *time.Time       `bun:"acquired_at"`
-	CurrentPrice      *decimal.Decimal `bun:"current_price,type:decimal(36,18)"`
-	DayChange24h      *decimal.Decimal `bun:"day_change_24h,type:decimal(10,4)"`
-	PriceUpdatedAt    *time.Time       `bun:"price_updated_at"`
-	PriceSource       *string          `bun:"price_source,type:varchar(50)"`
-	LastUpdatedAt     time.Time        `bun:"last_updated_at,nullzero,notnull,default:current_timestamp"`
+	AcquiredAt         *time.Time       `bun:"acquired_at"`
+	CurrentPrice       *decimal.Decimal `bun:"current_price,type:decimal(36,18)"`
+	DayChange24h       *decimal.Decimal `bun:"day_change_24h,type:decimal(10,4)"`
+	PriceUpdatedAt     *time.Time       `bun:"price_updated_at"`
+	PriceSource        *string          `bun:"price_source,type:varchar(50)"`
+	LastUpdatedAt      time.Time        `bun:"last_updated_at,nullzero,notnull,default:current_timestamp"`
 
 	// Relations
 	WalletAccount *WalletAccount `bun:"rel:belongs-to,join:wallet_account_id=id"`
@@ -242,24 +242,24 @@ func NewWalletBalanceFromRaw(accountID, symbol, name string, decimals int, rawBa
 type WalletActivity struct {
 	bun.BaseModel `bun:"table:sigma_finance.wallet_activities,alias:wact"`
 
-	ID                         string          `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
-	WalletAccountID            string          `bun:"wallet_account_id,notnull,type:uuid"`
-	TxHash                     string          `bun:"tx_hash,notnull"`
-	BlockOrSlot                int64           `bun:"block_or_slot,notnull"`
-	ExecutedAt                 time.Time       `bun:"executed_at,notnull"`
-	FromAddress                string          `bun:"from_address,notnull"`
-	ToAddress                  string          `bun:"to_address,notnull"`
-	TokenAddress               *string         `bun:"token_address"`
-	RawAmount                  string          `bun:"raw_amount,type:numeric(78,0),notnull,default:0"`
-	Decimals                   int             `bun:"decimals,notnull,default:18"`
-	FormattedAmount            decimal.Decimal `bun:"formatted_amount,type:decimal(36,18),notnull,default:0"`
-	FeeAmount                  string          `bun:"fee_amount,type:numeric(78,0),notnull,default:0"`
-	MovementIndex              int             `bun:"movement_index,notnull,default:0"`
-	ProviderSource             string          `bun:"provider_source,notnull,default:'ALCHEMY'"`
-	RawMetadata                json.RawMessage `bun:"raw_metadata,type:jsonb"`
-	MatchedInternalActivityID  *string         `bun:"matched_internal_activity_id,type:uuid"`
-	ClassifiedTransactionID    *string         `bun:"classified_transaction_id,type:uuid"`
-	CreatedAt                  time.Time       `bun:"created_at,nullzero,notnull,default:current_timestamp"`
+	ID                        string          `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	WalletAccountID           string          `bun:"wallet_account_id,notnull,type:uuid"`
+	TxHash                    string          `bun:"tx_hash,notnull"`
+	BlockOrSlot               int64           `bun:"block_or_slot,notnull"`
+	ExecutedAt                time.Time       `bun:"executed_at,notnull"`
+	FromAddress               string          `bun:"from_address,notnull"`
+	ToAddress                 string          `bun:"to_address,notnull"`
+	TokenAddress              *string         `bun:"token_address"`
+	RawAmount                 string          `bun:"raw_amount,type:numeric(78,0),notnull,default:0"`
+	Decimals                  int             `bun:"decimals,notnull,default:18"`
+	FormattedAmount           decimal.Decimal `bun:"formatted_amount,type:decimal(36,18),notnull,default:0"`
+	FeeAmount                 string          `bun:"fee_amount,type:numeric(78,0),notnull,default:0"`
+	MovementIndex             int             `bun:"movement_index,notnull,default:0"`
+	ProviderSource            string          `bun:"provider_source,notnull,default:'ALCHEMY'"`
+	RawMetadata               json.RawMessage `bun:"raw_metadata,type:jsonb"`
+	MatchedInternalActivityID *string         `bun:"matched_internal_activity_id,type:uuid"`
+	ClassifiedTransactionID   *string         `bun:"classified_transaction_id,type:uuid"`
+	CreatedAt                 time.Time       `bun:"created_at,nullzero,notnull,default:current_timestamp"`
 
 	// Relations
 	WalletAccount *WalletAccount `bun:"rel:belongs-to,join:wallet_account_id=id"`
@@ -311,4 +311,3 @@ type BlockchainNetworkConfig struct {
 	Source         string            `bun:"source,notnull,default:'DEFAULT'"`
 	UpdatedAt      time.Time         `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
 }
-

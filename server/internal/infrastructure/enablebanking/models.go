@@ -329,19 +329,19 @@ type PartyInfo struct {
 
 // TransactionItem represents a financial movement.
 type TransactionItem struct {
-	TransactionID        string                `json:"transaction_id,omitempty"`
-	EntryReference       string                `json:"entry_reference,omitempty"`
-	TransactionAmount    TransactionAmount     `json:"transaction_amount"`
-	CreditDebitIndicator string                `json:"credit_debit_indicator"` // "CRDT" or "DBIT"
-	Status               string                `json:"status,omitempty"`                 // "BOOKED", "PDNG"
-	BookingDate          string                `json:"booking_date,omitempty"`
-	ValueDate            string                `json:"value_date,omitempty"`
-	RemittanceInfo       []string              `json:"remittance_information,omitempty"`
-	Creditor             *PartyInfo            `json:"creditor,omitempty"`
-	Debtor               *PartyInfo            `json:"debtor,omitempty"`
+	TransactionID        string                 `json:"transaction_id,omitempty"`
+	EntryReference       string                 `json:"entry_reference,omitempty"`
+	TransactionAmount    TransactionAmount      `json:"transaction_amount"`
+	CreditDebitIndicator string                 `json:"credit_debit_indicator"` // "CRDT" or "DBIT"
+	Status               string                 `json:"status,omitempty"`       // "BOOKED", "PDNG"
+	BookingDate          string                 `json:"booking_date,omitempty"`
+	ValueDate            string                 `json:"value_date,omitempty"`
+	RemittanceInfo       []string               `json:"remittance_information,omitempty"`
+	Creditor             *PartyInfo             `json:"creditor,omitempty"`
+	Debtor               *PartyInfo             `json:"debtor,omitempty"`
 	DebtorAccount        *AccountIdentification `json:"debtor_account,omitempty"`
 	CreditorAccount      *AccountIdentification `json:"creditor_account,omitempty"`
-	BankTransactionCode  any                   `json:"bank_transaction_code,omitempty"`
+	BankTransactionCode  any                    `json:"bank_transaction_code,omitempty"`
 }
 
 // TransactionsResponse represents the paginated response from GET /accounts/{id}/transactions.
@@ -370,4 +370,3 @@ func (e *APIError) Error() string {
 	}
 	return fmt.Sprintf("enable banking api error (status %d)", e.StatusCode)
 }
-

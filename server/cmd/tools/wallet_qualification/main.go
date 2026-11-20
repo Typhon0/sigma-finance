@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	defaultEvmTestAddress    = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" // vitalik.eth
+	defaultEvmTestAddress    = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"   // vitalik.eth
 	defaultSolanaTestAddress = "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM" // Solana Foundation / Binance hot wallet
 	defaultBtcTestAddress    = "bc1qwfgdjyy95aay2686fn74h6a4nu9eev6np7q4fn204dkj3274frlqrskvx0"
 	defaultBtcTestXpub       = "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFEh73bCX27DeNVksux55LE29JKBma442fcx138eLurPNgB"

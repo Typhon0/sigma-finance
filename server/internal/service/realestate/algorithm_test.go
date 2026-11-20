@@ -35,8 +35,8 @@ func TestGeographicRouting(t *testing.T) {
 	// Eligible DVF (Metropole except 57/67/68, plus DROM 971-974)
 	assert.True(t, IsEligibleDVF("75001"))
 	assert.True(t, IsEligibleDVF("44000"))
-	assert.True(t, IsEligibleDVF("97100")) // Guadeloupe is covered by DVF
-	assert.True(t, IsEligibleDVF("97400")) // La Réunion is covered by DVF
+	assert.True(t, IsEligibleDVF("97100"))  // Guadeloupe is covered by DVF
+	assert.True(t, IsEligibleDVF("97400"))  // La Réunion is covered by DVF
 	assert.False(t, IsEligibleDVF("67000")) // Strasbourg: Alsace-Moselle
 	assert.False(t, IsEligibleDVF("97600")) // Mayotte: Not covered
 }

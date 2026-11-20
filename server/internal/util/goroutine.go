@@ -15,7 +15,7 @@ func RunTask(ctx context.Context, name string, task func(ctx context.Context)) {
 				log.Printf("[PANIC RECOVERED] in goroutine %q: %v\nStack Trace:\n%s", name, r, string(debug.Stack()))
 			}
 		}()
-		
+
 		// If context is already cancelled, don't run
 		if ctx.Err() != nil {
 			return

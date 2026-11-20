@@ -35,9 +35,9 @@ type SolanaTokenAccountItem struct {
 				Info struct {
 					Mint        string `json:"mint"`
 					TokenAmount struct {
-						Amount         string   `json:"amount"` // raw amount string
-						Decimals       int      `json:"decimals"`
-						UIAmountString *string  `json:"uiAmountString"`
+						Amount         string  `json:"amount"` // raw amount string
+						Decimals       int     `json:"decimals"`
+						UIAmountString *string `json:"uiAmountString"`
 					} `json:"tokenAmount"`
 				} `json:"info"`
 			} `json:"parsed"`
@@ -66,23 +66,23 @@ type SolanaTransactionResult struct {
 	BlockTime *int64 `json:"blockTime"`
 	Slot      uint64 `json:"slot"`
 	Meta      struct {
-		Err          interface{} `json:"err"`
-		Fee          uint64      `json:"fee"`
-		PreBalances  []int64     `json:"preBalances"`
-		PostBalances []int64     `json:"postBalances"`
+		Err              interface{} `json:"err"`
+		Fee              uint64      `json:"fee"`
+		PreBalances      []int64     `json:"preBalances"`
+		PostBalances     []int64     `json:"postBalances"`
 		PreTokenBalances []struct {
-			AccountIndex int    `json:"accountIndex"`
-			Mint         string `json:"mint"`
-			Owner        string `json:"owner"`
+			AccountIndex  int    `json:"accountIndex"`
+			Mint          string `json:"mint"`
+			Owner         string `json:"owner"`
 			UITokenAmount struct {
 				Amount   string `json:"amount"`
 				Decimals int    `json:"decimals"`
 			} `json:"uiTokenAmount"`
 		} `json:"preTokenBalances"`
 		PostTokenBalances []struct {
-			AccountIndex int    `json:"accountIndex"`
-			Mint         string `json:"mint"`
-			Owner        string `json:"owner"`
+			AccountIndex  int    `json:"accountIndex"`
+			Mint          string `json:"mint"`
+			Owner         string `json:"owner"`
 			UITokenAmount struct {
 				Amount   string `json:"amount"`
 				Decimals int    `json:"decimals"`

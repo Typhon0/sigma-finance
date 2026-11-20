@@ -301,7 +301,7 @@ func seedFromFrankfurterBatch(ctx context.Context, db bun.IDB, from, to time.Tim
 		}
 
 		var data struct {
-			Base  string                         `json:"base"`
+			Base  string                        `json:"base"`
 			Rates map[string]map[string]float64 `json:"rates"`
 		}
 		decodeErr := json.NewDecoder(resp.Body).Decode(&data)

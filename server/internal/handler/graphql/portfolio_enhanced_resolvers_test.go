@@ -73,7 +73,6 @@ func TestPortfolioResolverValidation(t *testing.T) {
 		}
 	})
 
-
 	t.Run("handlePortfolioServiceError", func(t *testing.T) {
 		tests := []struct {
 			name     string
@@ -106,8 +105,6 @@ func TestPortfolioResolverValidation(t *testing.T) {
 		}
 	})
 }
-
-
 
 func TestBuildPortfolioOrderClause(t *testing.T) {
 	tests := []struct {

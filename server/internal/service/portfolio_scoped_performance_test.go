@@ -134,4 +134,3 @@ func TestScopedHistoryCache(t *testing.T) {
 		t.Errorf("expected %s to remain in cache", key3)
 	}
 }
-

@@ -17,8 +17,6 @@ func TestHelperFunctions(t *testing.T) {
 			t.Errorf("Expected 123, got %s", id)
 		}
 
-
-
 		// Test empty ID
 		_, err = parseID("")
 		if err == nil {

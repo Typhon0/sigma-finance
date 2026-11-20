@@ -69,7 +69,7 @@ type Transaction struct {
 	AccountID         *string          `bun:"account_id"`  // Custody account
 	PositionID        *string          `bun:"position_id"` // Optional for some transaction types (e.g. account cash flows)
 	Type              TransactionType  `bun:"type,notnull"`
-	Amount            Money            `bun:"amount,notnull"`                       // Amount in cents
+	Amount            Money            `bun:"amount,notnull"`                 // Amount in cents
 	Quantity          *decimal.Decimal `bun:"quantity,type:numeric"`          // For quantity-based transactions
 	UnitPriceAmount   *decimal.Decimal `bun:"unit_price_amount,type:numeric"` // Price per unit at execution time
 	UnitPriceCurrency Currency         `bun:"unit_price_currency,type:varchar(10),default:USD"`

@@ -122,7 +122,7 @@ func TestInvariant_IdempotenceOfMovements(t *testing.T) {
 // Invariant 3: Resilience to Provider Failures (No Zeroing of Account Balances)
 type failingProvider struct{}
 
-func (f *failingProvider) ProviderName() string                                  { return "FAILING" }
+func (f *failingProvider) ProviderName() string                                 { return "FAILING" }
 func (f *failingProvider) SupportsNetwork(network model.BlockchainNetwork) bool { return true }
 func (f *failingProvider) FetchBalances(ctx context.Context, net model.BlockchainNetwork, addr string) ([]blockchain.RawTokenBalance, error) {
 	return nil, errors.New("upstream RPC 500 Internal Server Error")
@@ -515,6 +515,3 @@ func TestInvariant_PostgreSQLPositionQuantityAndCostBasisLosslessPersistence(t *
 	assert.True(t, costBasis.Equal(*reloaded.AverageCostBasis),
 		"Cost basis decimal mathematical identity must be exact")
 }
-
-
-

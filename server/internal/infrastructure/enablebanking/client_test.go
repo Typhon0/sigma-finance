@@ -434,4 +434,3 @@ func TestClient_APIError_StructuredParsing(t *testing.T) {
 	assert.Equal(t, "Session is already authorized", apiErr.Message)
 	assert.Contains(t, err.Error(), "ALREADY_AUTHORIZED")
 }
-

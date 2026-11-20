@@ -46,7 +46,7 @@ func TestCostBasis_DexSwapDerivation(t *testing.T) {
 	// Derived unit price = $2500 / 1.0 = $2500.00
 	outAmount := decimal.NewFromFloat(2500.0)
 	outPrice := decimal.NewFromFloat(1.0) // USDC
-	inAmount := decimal.NewFromFloat(1.0)  // ETH
+	inAmount := decimal.NewFromFloat(1.0) // ETH
 
 	outVal := outAmount.Mul(outPrice)
 	unitPrice := outVal.Div(inAmount)
@@ -67,4 +67,3 @@ func TestCostBasis_AntiPhantomGainRule(t *testing.T) {
 	assert.Nil(t, bal.CostBasisPerUnit)
 	assert.Equal(t, "UNRECORDED", bal.CostBasisType)
 }
-

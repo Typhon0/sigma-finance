@@ -503,5 +503,3 @@ func (s SyncRawEvent) GetID() string             { return s.ID }
 func (s *SyncRawEvent) SetID(id string)          { s.ID = id }
 func (s SyncRawEvent) GetCreatedAt() time.Time   { return s.CreatedAt }
 func (s *SyncRawEvent) SetCreatedAt(t time.Time) { s.CreatedAt = t }
-
-

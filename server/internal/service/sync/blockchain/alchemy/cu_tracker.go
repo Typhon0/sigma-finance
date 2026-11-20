@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	DefaultMaxComputeUnits   int64   = 30_000_000 // 30M free monthly quota
+	DefaultMaxComputeUnits  int64   = 30_000_000 // 30M free monthly quota
 	DefaultSoftLimitPercent float64 = 0.80       // 80% threshold = 24M CUs
 )
 
@@ -97,10 +97,10 @@ func (t *CUTracker) RecordConsumption(ctx context.Context, units int64) (bool, e
 	if t.db != nil {
 		_, err := t.db.NewInsert().
 			Model(&model.WalletCUTracking{
-				BillingMonth:          t.currentMonth,
+				BillingMonth:         t.currentMonth,
 				ComputeUnitsConsumed: t.consumedUnits,
 				IsThrottled:          t.isThrottled,
-				UpdatedAt:             time.Now().UTC(),
+				UpdatedAt:            time.Now().UTC(),
 			}).
 			On("CONFLICT (billing_month) DO UPDATE").
 			Set("compute_units_consumed = EXCLUDED.compute_units_consumed").

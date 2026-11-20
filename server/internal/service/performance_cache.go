@@ -15,13 +15,13 @@ import (
 type PerformanceCacheService struct {
 	cache          *cache.RedisCache
 	computeService PerformanceService // Original performance service
-	
+
 	// Background processing
-	refreshQueue   chan RefreshRequest
-	workers        int
-	stopCh         chan struct{}
-	wg             sync.WaitGroup
-	
+	refreshQueue chan RefreshRequest
+	workers      int
+	stopCh       chan struct{}
+	wg           sync.WaitGroup
+
 	// Metrics
 	cacheHits   int64
 	cacheMisses int64
@@ -39,23 +39,23 @@ type RefreshRequest struct {
 
 // CachedPerformanceMetrics represents cached performance data
 type CachedPerformanceMetrics struct {
-	PortfolioID     string                 `json:"portfolio_id"`
-	TotalValue      int64                  `json:"total_value"`
-	TotalReturn     float64                `json:"total_return"`
-	DailyChange     float64                `json:"daily_change"`
-	Allocation      map[string]float64     `json:"allocation"`
-	TopAssets       []AssetPerformance     `json:"top_assets"`
-	CalculatedAt    time.Time              `json:"calculated_at"`
-	DataVersion     int                    `json:"data_version"`
+	PortfolioID  string             `json:"portfolio_id"`
+	TotalValue   int64              `json:"total_value"`
+	TotalReturn  float64            `json:"total_return"`
+	DailyChange  float64            `json:"daily_change"`
+	Allocation   map[string]float64 `json:"allocation"`
+	TopAssets    []AssetPerformance `json:"top_assets"`
+	CalculatedAt time.Time          `json:"calculated_at"`
+	DataVersion  int                `json:"data_version"`
 }
 
 // AssetPerformance represents individual asset performance
 type AssetPerformance struct {
-	AssetID      string  `json:"asset_id"`
-	Symbol       string  `json:"symbol"`
-	Name         string  `json:"name"`
-	Value        int64   `json:"value"`
-	Change       float64 `json:"change"`
+	AssetID       string  `json:"asset_id"`
+	Symbol        string  `json:"symbol"`
+	Name          string  `json:"name"`
+	Value         int64   `json:"value"`
+	Change        float64 `json:"change"`
 	ChangePercent float64 `json:"change_percent"`
 }
 
@@ -92,12 +92,12 @@ func (pcs *PerformanceCacheService) GetPortfolioPerformance(ctx context.Context,
 		err := pcs.cache.Get(ctx, cache.PerformanceKey, cacheKey, &cached)
 		if err == nil {
 			pcs.incrementCacheHits()
-			
+
 			// Check if data is still fresh (less than 2 minutes old)
 			if time.Since(cached.CalculatedAt) < 2*time.Minute {
 				return &cached, nil
 			}
-			
+
 			// Data is stale, schedule background refresh but return cached data
 			pcs.scheduleRefresh(RefreshRequest{
 				Type:      "portfolio_performance",
@@ -105,10 +105,10 @@ func (pcs *PerformanceCacheService) GetPortfolioPerformance(ctx context.Context,
 				Priority:  1,
 				Timestamp: time.Now(),
 			})
-			
+
 			return &cached, nil
 		}
-		
+
 		if err != cache.ErrCacheMiss {
 			log.Printf("[INFO] Cache error for portfolio %s: %v", portfolioID, err)
 		}
@@ -125,7 +125,7 @@ func (pcs *PerformanceCacheService) GetPortfolioPerformance(ctx context.Context,
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		
+
 		if err := pcs.cache.Set(ctx, cache.PerformanceKey, cacheKey, metrics); err != nil {
 			log.Printf("[INFO] Failed to cache portfolio performance for %s: %v", portfolioID, err)
 		}
@@ -167,7 +167,7 @@ func (pcs *PerformanceCacheService) GetMultiplePortfolioPerformance(ctx context.
 				log.Printf("[WARN] Warning: Failed to unmarshal cached performance for %s: %v", portfolioID, err)
 			}
 		}
-		
+
 		missingIDs = append(missingIDs, portfolioID)
 		pcs.incrementCacheMisses()
 	}
@@ -218,7 +218,7 @@ func (pcs *PerformanceCacheService) GetChartData(ctx context.Context, portfolioI
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		
+
 		if err := pcs.cache.Set(ctx, cache.ChartDataKey, cacheKey, chartData); err != nil {
 			log.Printf("[INFO] Failed to cache chart data for %s: %v", portfolioID, err)
 		}
@@ -245,7 +245,7 @@ func (pcs *PerformanceCacheService) computePortfolioPerformance(ctx context.Cont
 // computeMultiplePortfolioPerformance computes performance for multiple portfolios
 func (pcs *PerformanceCacheService) computeMultiplePortfolioPerformance(ctx context.Context, portfolioIDs []string) (map[string]*CachedPerformanceMetrics, error) {
 	results := make(map[string]*CachedPerformanceMetrics)
-	
+
 	for _, id := range portfolioIDs {
 		metrics, err := pcs.computePortfolioPerformance(ctx, id)
 		if err != nil {
@@ -254,7 +254,7 @@ func (pcs *PerformanceCacheService) computeMultiplePortfolioPerformance(ctx cont
 		}
 		results[id] = metrics
 	}
-	
+
 	return results, nil
 }
 
@@ -264,14 +264,14 @@ func (pcs *PerformanceCacheService) computeChartData(ctx context.Context, portfo
 	// For now, return mock data
 	points := make([]ChartDataPoint, maxPoints)
 	baseTime := time.Now().Add(-24 * time.Hour)
-	
+
 	for i := 0; i < maxPoints; i++ {
 		points[i] = ChartDataPoint{
 			Timestamp: baseTime.Add(time.Duration(i) * time.Minute),
 			Value:     100000 + int64(i*100), // Trending up
 		}
 	}
-	
+
 	return points, nil
 }
 
@@ -284,7 +284,7 @@ type ChartDataPoint struct {
 // backgroundWorker processes refresh requests
 func (pcs *PerformanceCacheService) backgroundWorker(workerID int) {
 	defer pcs.wg.Done()
-	
+
 	log.Printf("[INFO] Performance cache worker %d started", workerID)
 	for {
 		select {
@@ -312,7 +312,7 @@ func (pcs *PerformanceCacheService) processRefreshRequest(req RefreshRequest, wo
 			if req.RetryCount < 3 {
 				req.RetryCount++
 				req.Timestamp = time.Now().Add(time.Duration(req.RetryCount) * time.Minute)
-				
+
 				select {
 				case pcs.refreshQueue <- req:
 				default:
@@ -334,7 +334,7 @@ func (pcs *PerformanceCacheService) processRefreshRequest(req RefreshRequest, wo
 // refreshScheduler schedules periodic cache refreshes
 func (pcs *PerformanceCacheService) refreshScheduler() {
 	defer pcs.wg.Done()
-	
+
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 
@@ -398,13 +398,13 @@ func (pcs *PerformanceCacheService) incrementCacheMisses() {
 func (pcs *PerformanceCacheService) GetCacheStats() (int64, int64, float64) {
 	pcs.mu.RLock()
 	defer pcs.mu.RUnlock()
-	
+
 	total := pcs.cacheHits + pcs.cacheMisses
 	hitRate := float64(0)
 	if total > 0 {
 		hitRate = float64(pcs.cacheHits) / float64(total)
 	}
-	
+
 	return pcs.cacheHits, pcs.cacheMisses, hitRate
 }
 
