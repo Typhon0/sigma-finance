@@ -79,6 +79,76 @@ func (m *MockSyncAdapter) FetchTransactions(ctx context.Context, cred *model.Syn
 	}, nil
 }
 
+// A synced sell must dispose of open lots exactly like a manually recorded
+// one. Without this, the tax-lot view keeps reporting sold quantity and the
+// unrealized gain and harvest suggestions are wrong.
+func TestReconcileTransactions_SellConsumesTaxLots(t *testing.T) {
+	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	ctx := context.Background()
+	uow := newSyncTestUOW()
+	uow.seedBaseEntities("user-1", "portfolio-1", "acc-1", "cred-1", "conn-1", "TEST_PROVIDER")
+
+	asset := &model.Asset{
+		ID:          "asset-aapl",
+		Symbol:      strPtr("AAPL"),
+		Name:        "Apple Inc.",
+		Type:        model.AssetTypeStock,
+		IsTradeable: true,
+	}
+	uow.assets[asset.ID] = asset
+
+	position := &model.Position{
+		ID:            "pos-aapl",
+		PortfolioID:   "portfolio-1",
+		AccountID:     "acc-1",
+		AssetID:       asset.ID,
+		Quantity:      decimal.NewFromInt(10),
+		QuoteCurrency: model.CurrencyUSD,
+	}
+	uow.positions[position.ID] = position
+
+	lot := &model.TaxLot{
+		ID:                "lot-aapl",
+		PortfolioID:       "portfolio-1",
+		PositionID:        position.ID,
+		AssetID:           asset.ID,
+		AcquiredAt:        time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
+		InitialQuantity:   decimal.NewFromInt(10),
+		RemainingQuantity: decimal.NewFromInt(10),
+		CostBasisPerUnit:  decimal.NewFromInt(100),
+		TotalCostBasis:    model.Money(100000),
+		Currency:          model.CurrencyUSD,
+		Status:            model.TaxLotStatusOpen,
+	}
+	uow.taxLots[lot.ID] = lot
+
+	quantity := decimal.NewFromInt(4)
+	unitPrice := decimal.NewFromInt(150)
+	sell := syncservice.RawTransaction{
+		ExternalID:        "sell-1",
+		Type:              model.TransactionTypeSell,
+		Symbol:            "AAPL",
+		Quantity:          &quantity,
+		UnitPriceAmount:   &unitPrice,
+		UnitPriceCurrency: model.CurrencyUSD,
+		Amount:            model.Money(60000),
+		Currency:          model.CurrencyUSD,
+		ExecutedAt:        time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC),
+	}
+
+	imported, updated, err := syncservice.ReconcileTransactions(ctx, uow, uow.connections["conn-1"], []syncservice.RawTransaction{sell})
+	require.NoError(t, err)
+	require.Equal(t, 1, imported)
+	require.Equal(t, 0, updated)
+
+	require.True(t, lot.RemainingQuantity.Equal(decimal.NewFromInt(6)), "remaining quantity: got %s", lot.RemainingQuantity)
+	require.Len(t, uow.taxLotDispositions, 1)
+	for _, disposition := range uow.taxLotDispositions {
+		require.True(t, disposition.Quantity.Equal(quantity), "disposed quantity: got %s", disposition.Quantity)
+		require.Equal(t, position.ID, disposition.PositionID)
+	}
+}
+
 func TestSyncService_ReconciliationSnapshotWithResidualTaxLot(t *testing.T) {
 	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
 	ctx := context.Background()
@@ -2000,6 +2070,15 @@ func (r *syncTestTaxLotRepo) Update(ctx context.Context, lot *model.TaxLot) erro
 	return nil
 }
 
+func (r *syncTestTaxLotRepo) UpdateBatch(ctx context.Context, lots []*model.TaxLot) error {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
+	for _, lot := range lots {
+		r.u.taxLots[lot.ID] = lot
+	}
+	return nil
+}
+
 func (r *syncTestTaxLotRepo) Delete(ctx context.Context, id string) error {
 	r.u.mu.Lock()
 	defer r.u.mu.Unlock()
@@ -2010,6 +2089,18 @@ func (r *syncTestTaxLotRepo) Delete(ctx context.Context, id string) error {
 type syncTestTaxLotDispositionRepo struct {
 	repository.ITaxLotDispositionRepository
 	u *syncTestUOW
+}
+
+func (r *syncTestTaxLotDispositionRepo) CreateBatch(ctx context.Context, dispositions []*model.TaxLotDisposition) error {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
+	for _, disposition := range dispositions {
+		if disposition.ID == "" {
+			disposition.ID = r.u.nextID("disp")
+		}
+		r.u.taxLotDispositions[disposition.ID] = disposition
+	}
+	return nil
 }
 
 func (r *syncTestTaxLotDispositionRepo) FindByPositionID(ctx context.Context, positionID string) ([]*model.TaxLotDisposition, error) {

@@ -2,11 +2,13 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/testutil"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/uptrace/bun"
 )
 
 func repoPtrString(value string) *string {
@@ -17,6 +19,58 @@ const (
 	repoTestOwnerOne = "11111111-1111-1111-1111-111111111111"
 	repoTestOwnerTwo = "22222222-2222-2222-2222-222222222222"
 )
+
+// Search and SearchBaseline may be bound to a transaction, which owns a single
+// connection. Concurrent queries on it desynchronise the Postgres protocol
+// ("unexpected message 'T'"), so both must stay sequential.
+func TestInstrumentRepository_SearchWithinTransaction(t *testing.T) {
+	testDB := testutil.NewTestDB(t)
+	defer testDB.Close()
+
+	ctx := context.Background()
+	_, err := testDB.DB.ExecContext(ctx, `
+		DELETE FROM sigma_finance.instrument_aliases;
+		DELETE FROM sigma_finance.instrument_sync_state;
+		DELETE FROM sigma_finance.instruments;
+	`)
+	require.NoError(t, err)
+
+	repo := NewInstrumentRepository(testDB.DB)
+	_, err = repo.Create(ctx, &model.Instrument{
+		Symbol:           "AAPL",
+		NormalizedSymbol: "AAPL",
+		Name:             "Apple Inc.",
+		NormalizedName:   "apple inc",
+		Exchange:         "NASDAQ",
+		AssetType:        model.InstrumentAssetTypeStock,
+		Status:           model.InstrumentStatusActive,
+		ProviderSource:   "test",
+	})
+	require.NoError(t, err)
+
+	err = testDB.DB.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		txRepo := NewInstrumentRepository(tx)
+		for i := 0; i < 5; i++ {
+			rows, searchErr := txRepo.Search(ctx, "AAPL", InstrumentSearchFilter{Limit: 10})
+			if searchErr != nil {
+				return fmt.Errorf("Search iteration %d: %w", i, searchErr)
+			}
+			if len(rows) == 0 {
+				return fmt.Errorf("Search iteration %d returned no rows", i)
+			}
+
+			rows, searchErr = txRepo.SearchBaseline(ctx, "AAPL", InstrumentSearchFilter{Limit: 10})
+			if searchErr != nil {
+				return fmt.Errorf("SearchBaseline iteration %d: %w", i, searchErr)
+			}
+			if len(rows) == 0 {
+				return fmt.Errorf("SearchBaseline iteration %d returned no rows", i)
+			}
+		}
+		return nil
+	})
+	require.NoError(t, err)
+}
 
 func TestInstrumentRepository_ListManual(t *testing.T) {
 	testDB := testutil.NewTestDB(t)
