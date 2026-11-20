@@ -1,0 +1,67 @@
+name: Go Tests
+
+on:
+  push:
+    branches:
+      - pilot
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      TEST_DB_HOST: localhost
+      TEST_DB_PORT: "5432"
+      TEST_DB_USER: sigma_finance
+      TEST_DB_PASSWORD: test_password
+      TEST_DB_NAME: sigma_finance_test
+      TEST_DB_SSLMODE: disable
+      TEST_DB_ADMIN_HOST: localhost
+      TEST_DB_ADMIN_PORT: "5432"
+      TEST_DB_ADMIN_USER: postgres
+      TEST_DB_ADMIN_PASSWORD: postgres
+      TEST_DB_ADMIN_NAME: sigma_finance_test
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sigma_finance_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      - name: Create test role
+        shell: bash
+        run: |
+          set -euo pipefail
+          PGPASSWORD=postgres psql -h localhost -U postgres -d sigma_finance_test \
+            -c "CREATE ROLE sigma_finance LOGIN PASSWORD 'test_password';"
+
+      - name: Run Go tests
+        shell: bash
+        working-directory: server
+        run: |
+          set -euo pipefail
+          # All packages share one database and truncate each other's tables.
+          go test -p 1 ./... -count=1 -timeout 600s
