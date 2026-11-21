@@ -56,6 +56,10 @@ func TestReadRowsAndNormalizeFields(t *testing.T) {
 	if !ok || fundType != "FUND" {
 		t.Fatalf("expected ETF->FUND mapping, got %q (ok=%v)", fundType, ok)
 	}
+	directFundType, ok := NormalizeAssetType("FUND")
+	if !ok || directFundType != "FUND" {
+		t.Fatalf("expected FUND->FUND mapping, got %q (ok=%v)", directFundType, ok)
+	}
 	day := NormalizeUTCDailyTimestamp(readRows[0].Timestamp)
 	if day.Format(time.RFC3339) != "2024-01-02T00:00:00Z" {
 		t.Fatalf("expected UTC day boundary timestamp, got %s", day.Format(time.RFC3339))

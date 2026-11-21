@@ -200,7 +200,7 @@ func NormalizeAssetType(value string) (string, bool) {
 	switch normalized {
 	case "STOCK":
 		return "STOCK", true
-	case "ETF":
+	case "ETF", "FUND":
 		return "FUND", true
 	default:
 		return "", false
