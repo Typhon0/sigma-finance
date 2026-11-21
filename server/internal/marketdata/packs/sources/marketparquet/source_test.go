@@ -73,6 +73,42 @@ func TestReadRowsAndNormalizeFields(t *testing.T) {
 	}
 }
 
+func TestNormalizeUTCDailyTimestampKeepsDateOnlyUTCDate(t *testing.T) {
+	source := time.Date(2026, 4, 6, 0, 0, 0, 0, time.UTC)
+	got := NormalizeUTCDailyTimestamp(source)
+	if got.Format(time.RFC3339) != "2026-04-06T00:00:00Z" {
+		t.Fatalf("expected date-only UTC timestamp to stay on 2026-04-06, got %s", got.Format(time.RFC3339))
+	}
+}
+
+func TestReadRowsKeepsDateOnlyUTCDate(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "2026-04-06.parquet")
+	rows := []DailyRow{{
+		Timestamp: time.Date(2026, 4, 6, 0, 0, 0, 0, time.UTC),
+		Symbol:    "^BVP",
+		AssetType: "STOCK",
+		Open:      188054.3,
+		High:      189219.5,
+		Low:       187811.3,
+		Close:     188161.97,
+		Volume:    537544400,
+	}}
+	if err := writeFixture(path, rows); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	readRows, err := ReadRows(path)
+	if err != nil {
+		t.Fatalf("read rows: %v", err)
+	}
+	if len(readRows) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(readRows))
+	}
+	got := NormalizeUTCDailyTimestamp(readRows[0].Timestamp)
+	if got.Format(time.DateOnly) != "2026-04-06" {
+		t.Fatalf("expected decoded date-only row to stay on 2026-04-06, got %s", got.Format(time.RFC3339))
+	}
+}
+
 func TestDatePayloadParsingAndFiltering(t *testing.T) {
 	raw, err := json.Marshal(map[string]any{
 		"dates": []string{"2024-01-03", "2024-01-02"},

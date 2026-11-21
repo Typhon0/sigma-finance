@@ -211,6 +211,11 @@ func NormalizeUTCDailyTimestamp(sourceTS time.Time) time.Time {
 	if sourceTS.IsZero() {
 		return sourceTS
 	}
+	// MarketParquet timestamps are date-only values encoded at midnight UTC.
+	// Converting those to New York would move every row to the previous day.
+	if sourceTS.Location() == time.UTC {
+		return time.Date(sourceTS.Year(), sourceTS.Month(), sourceTS.Day(), 0, 0, 0, 0, time.UTC)
+	}
 	loc, err := time.LoadLocation("America/New_York")
 	if err != nil {
 		loc = time.FixedZone("EST", -5*60*60)
