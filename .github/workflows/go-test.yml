@@ -56,7 +56,8 @@ jobs:
         run: |
           set -euo pipefail
           PGPASSWORD=postgres psql -h localhost -U postgres -d sigma_finance_test \
-            -c "CREATE ROLE sigma_finance LOGIN PASSWORD 'test_password';"
+            -c "CREATE ROLE sigma_finance LOGIN PASSWORD 'test_password';" \
+            -c "GRANT CREATE ON DATABASE sigma_finance_test TO sigma_finance;"
 
       - name: Check formatting
         working-directory: server

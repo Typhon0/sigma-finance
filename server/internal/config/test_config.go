@@ -149,6 +149,12 @@ func EnsureTestSchemaPermissions(ctx context.Context, adminDB *bun.DB) error {
 		return fmt.Errorf("failed to move pg_trgm extension: %w", err)
 	}
 
+	// The test user must be able to create the schema on a fresh database.
+	if err := grant(fmt.Sprintf("GRANT CREATE ON DATABASE %s TO %s", pq.QuoteIdentifier(GetTestDBConfig().DBName), testUser),
+		"grant database create"); err != nil {
+		return err
+	}
+
 	// Grant schema-level privileges
 	if err := grant(fmt.Sprintf("GRANT USAGE, CREATE ON SCHEMA %s TO %s", schemaName, testUser),
 		"grant schema privileges"); err != nil {

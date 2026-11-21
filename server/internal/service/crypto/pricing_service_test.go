@@ -2,12 +2,20 @@ package crypto_test
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/service/crypto"
 )
+
+func requireLiveBinance(t *testing.T) {
+	t.Helper()
+	if os.Getenv("BINANCE_LIVE_TESTS") != "1" {
+		t.Skip("set BINANCE_LIVE_TESTS=1 to run live Binance pricing tests")
+	}
+}
 
 func TestNormalizeCryptoSymbol(t *testing.T) {
 	assert.Equal(t, "RENDER", crypto.NormalizeCryptoSymbol("RNDR"))
@@ -41,6 +49,7 @@ func TestPricingService_ResolveTokenPrice_Stablecoin(t *testing.T) {
 }
 
 func TestPricingService_ResolveTokenPrice_LiveBinance(t *testing.T) {
+	requireLiveBinance(t)
 	ctx := context.Background()
 	svc := crypto.NewPricingService(nil)
 
@@ -67,6 +76,7 @@ func TestPricingService_ResolveTokenPrice_LiveBinance(t *testing.T) {
 }
 
 func TestPricingService_RefreshBalances_Memory(t *testing.T) {
+	requireLiveBinance(t)
 	ctx := context.Background()
 	svc := crypto.NewPricingService(nil)
 
