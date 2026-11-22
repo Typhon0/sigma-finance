@@ -2213,6 +2213,21 @@ type UpdateBlockchainNetworkConfigInput struct {
 	ExplorerAPIURL *string           `json:"explorerApiUrl,omitempty"`
 }
 
+type UpdateLifeInsuranceInput struct {
+	Name             *string    `json:"name,omitempty"`
+	PolicyNumber     *string    `json:"policyNumber,omitempty"`
+	Insurer          *string    `json:"insurer,omitempty"`
+	PolicyType       *string    `json:"policyType,omitempty"`
+	CoverageAmount   *float64   `json:"coverageAmount,omitempty"`
+	PremiumAmount    *float64   `json:"premiumAmount,omitempty"`
+	PremiumFrequency *string    `json:"premiumFrequency,omitempty"`
+	Beneficiaries    []string   `json:"beneficiaries,omitempty"`
+	MaturityDate     *time.Time `json:"maturityDate,omitempty"`
+	CurrentValue     *float64   `json:"currentValue,omitempty"`
+	PurchasePrice    *float64   `json:"purchasePrice,omitempty"`
+	PurchaseDate     *time.Time `json:"purchaseDate,omitempty"`
+}
+
 type UpdateManualInstrumentInput struct {
 	Symbol           string              `json:"symbol"`
 	Name             string              `json:"name"`

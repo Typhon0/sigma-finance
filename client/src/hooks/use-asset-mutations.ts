@@ -13,6 +13,7 @@ import {
 	CREATE_WATCH_ASSET,
 	REFRESH_REAL_ESTATE_VALUATION,
 	REFRESH_SINGLE_ASSET_PRICE,
+	UPDATE_LIFE_INSURANCE_ASSET,
 	UPDATE_REAL_ESTATE_ASSET,
 } from "@/graphql/mutations/asset";
 import { ADD_INSTRUMENT_TO_PORTFOLIO } from "@/graphql/mutations/instruments";
@@ -214,6 +215,21 @@ export interface AddLifeInsuranceInput {
 	purchaseDate?: string;
 }
 
+export interface UpdateLifeInsuranceInput {
+	name?: string;
+	policyNumber?: string;
+	insurer?: string;
+	policyType?: string;
+	coverageAmount?: number;
+	premiumAmount?: number;
+	premiumFrequency?: string;
+	beneficiaries?: string[];
+	maturityDate?: string;
+	currentValue?: number;
+	purchasePrice?: number;
+	purchaseDate?: string;
+}
+
 export interface AddWatchInput {
 	portfolioId: string;
 	name: string;
@@ -366,6 +382,10 @@ export const useAssetMutations = () => {
 		useMutation(REFRESH_REAL_ESTATE_VALUATION, invalidatePortfolioDerivedQueries);
 	const [createLifeInsuranceAsset, { loading: creatingLifeInsurance }] = useMutation(
 		CREATE_LIFE_INSURANCE_ASSET,
+		invalidatePortfolioDerivedQueries,
+	);
+	const [updateLifeInsuranceAsset, { loading: updatingLifeInsurance }] = useMutation(
+		UPDATE_LIFE_INSURANCE_ASSET,
 		invalidatePortfolioDerivedQueries,
 	);
 	const [createWatchAsset, { loading: creatingWatch }] = useMutation(
@@ -901,6 +921,16 @@ export const useAssetMutations = () => {
 		[createLifeInsuranceAsset, addAssetToPortfolio],
 	);
 
+	const updateLifeInsurance = useCallback(
+		async (id: string, input: UpdateLifeInsuranceInput) => {
+			const result = await updateLifeInsuranceAsset({
+				variables: { id, input },
+			});
+			return result.data?.updateLifeInsuranceAsset;
+		},
+		[updateLifeInsuranceAsset],
+	);
+
 	const addWatch = useCallback(
 		async (input: AddWatchInput) => {
 			const watchInput = {
@@ -1020,6 +1050,7 @@ export const useAssetMutations = () => {
 		updateRealEstate,
 		refreshRealEstateValuation,
 		addLifeInsurance,
+		updateLifeInsurance,
 		addWatch,
 		addLoan,
 		refreshAssetPrice: refreshAssetPriceBestEffort,
@@ -1031,6 +1062,7 @@ export const useAssetMutations = () => {
 			updatingRealEstate ||
 			refreshingRealEstateValuation ||
 			creatingLifeInsurance ||
+			updatingLifeInsurance ||
 			creatingWatch ||
 			creatingLoan ||
 			addingToPortfolio,

@@ -12,6 +12,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/repository"
@@ -276,6 +277,95 @@ func (r *mutationResolver) UpdateRealEstateAsset(ctx context.Context, id string,
 
 	tags, _ := r.TagService.GetAssetTags(ctx, asset.ID)
 	return mapRealEstateToGQL(*asset, tags, nil, nil, nil), nil
+}
+
+// UpdateLifeInsuranceAsset is the resolver for the updateLifeInsuranceAsset field.
+func (r *mutationResolver) UpdateLifeInsuranceAsset(ctx context.Context, id string, input gqlModel.UpdateLifeInsuranceInput) (*gqlModel.LifeInsurance, error) {
+	log.Printf("[INFO] [graphql] UpdateLifeInsuranceAsset: started for id %s", id)
+	var asset *model.Asset
+	var err error
+
+	err = r.UOW.Do(ctx, func(uow repository.IUnitOfWork) error {
+		existing, getErr := uow.Asset().GetByID(ctx, id)
+		if getErr != nil {
+			return fmt.Errorf("asset not found: %w", getErr)
+		}
+		if existing.Type != model.AssetTypeLifeInsurance {
+			return fmt.Errorf("asset %s is not a life insurance asset", id)
+		}
+
+		var metadata model.LifeInsuranceMetadata
+		if len(existing.Metadata) > 0 {
+			_ = json.Unmarshal(existing.Metadata, &metadata)
+		}
+
+		if input.Name != nil && *input.Name != "" {
+			existing.Name = *input.Name
+		}
+		if input.PolicyNumber != nil && *input.PolicyNumber != "" {
+			metadata.PolicyNumber = *input.PolicyNumber
+			existing.Symbol = input.PolicyNumber
+		}
+		if input.Insurer != nil {
+			metadata.Insurer = *input.Insurer
+		}
+		if input.PolicyType != nil {
+			metadata.PolicyType = *input.PolicyType
+		}
+		if input.CoverageAmount != nil {
+			metadata.CoverageAmount = int64(*input.CoverageAmount * 100)
+		}
+		if input.PremiumAmount != nil {
+			metadata.PremiumAmount = int64(*input.PremiumAmount * 100)
+		}
+		if input.PremiumFrequency != nil {
+			metadata.PremiumFrequency = *input.PremiumFrequency
+		}
+		if input.Beneficiaries != nil {
+			metadata.Beneficiaries = input.Beneficiaries
+		}
+		if input.MaturityDate != nil {
+			metadata.MaturityDate = input.MaturityDate
+		}
+
+		metadataBytes, marshalErr := json.Marshal(metadata)
+		if marshalErr != nil {
+			return fmt.Errorf("failed to marshal life insurance metadata: %w", marshalErr)
+		}
+		existing.Metadata = metadataBytes
+		existing.UpdatedAt = time.Now()
+
+		updateErr := uow.Asset().Update(ctx, existing)
+		if updateErr != nil {
+			return fmt.Errorf("failed to update asset: %w", updateErr)
+		}
+
+		// If current value is updated and positive, record latest price
+		if input.CurrentValue != nil && *input.CurrentValue > 0 {
+			_, priceErr := uow.AssetPrice().Create(ctx, &model.AssetPrice{
+				AssetID:   existing.ID,
+				Price:     decimal.NewFromFloat(*input.CurrentValue),
+				Timestamp: time.Now(),
+				Source:    "MANUAL",
+			})
+			if priceErr != nil {
+				log.Printf("[WARN] [UpdateLifeInsuranceAsset] failed to record price in asset_prices: %v", priceErr)
+			}
+		}
+
+		asset = existing
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	tags, _ := r.TagService.GetAssetTags(ctx, asset.ID)
+	result := mapLifeInsuranceToGQL(*asset, tags, nil, nil, input.CurrentValue)
+	result.PurchaseDate = input.PurchaseDate
+	result.PurchasePrice = input.PurchasePrice
+	return result, nil
 }
 
 // EstimateRealEstate is the resolver for the estimateRealEstate field.

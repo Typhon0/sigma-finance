@@ -571,6 +571,22 @@ input CreateLifeInsuranceInput {
     maturityDate: Time
 }
 
+# Input for updating an existing LifeInsurance asset
+input UpdateLifeInsuranceInput {
+    name: String
+    policyNumber: String
+    insurer: String
+    policyType: String
+    coverageAmount: Float
+    premiumAmount: Float
+    premiumFrequency: String
+    beneficiaries: [String!]
+    maturityDate: Time
+    currentValue: Float
+    purchasePrice: Float
+    purchaseDate: Time
+}
+
 # Input for creating a new Loan asset
 input CreateLoanInput {
     name: String!

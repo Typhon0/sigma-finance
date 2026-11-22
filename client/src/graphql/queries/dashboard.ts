@@ -213,6 +213,16 @@ export const GET_DASHBOARD_CRITICAL = graphql(/* GraphQL */ `
               percentage
             }
           }
+          ... on LifeInsurance {
+            policyNumber
+            insurer
+            policyType
+            coverageAmount
+            premiumAmount
+            premiumFrequency
+            beneficiaries
+            maturityDate
+          }
           assetType {
             id
             name

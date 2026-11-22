@@ -18,6 +18,7 @@ import type {
 	AddLifeInsuranceInput,
 	AddRealEstateInput,
 	AddWatchInput,
+	UpdateLifeInsuranceInput,
 } from "@/hooks/use-asset-mutations";
 import { useAssetMutations } from "@/hooks/use-asset-mutations";
 import { usePortfolioAnalytics } from "@/hooks/use-portfolio-analytics";
@@ -70,6 +71,16 @@ export interface PortfolioAssetItem {
 	currency?: string;
 	interestRate?: number | null;
 	balance?: number | null;
+	// LifeInsurance-specific metadata
+	policyNumber?: string;
+	insurer?: string;
+	policyType?: string;
+	coverageAmount?: number;
+	premiumAmount?: number;
+	premiumFrequency?: string;
+	beneficiaries?: string;
+	maturityDate?: string;
+	openingDate?: string;
 	// RealEstate-specific metadata
 	propertyType?: string;
 	address?: string;
@@ -430,6 +441,39 @@ function extractRealEstateFields(
 	};
 }
 
+/** Extract LifeInsurance-specific fields from a GraphQL asset object */
+function extractLifeInsuranceFields(
+	asset: { __typename?: string } & Record<string, unknown>,
+): Partial<PortfolioAssetItem> {
+	const isLifeInsurance =
+		asset.__typename === "LifeInsurance" ||
+		(asset.assetType as { name?: string } | undefined)?.name?.toLowerCase()?.includes("insurance") ||
+		asset.policyNumber !== undefined ||
+		asset.insurer !== undefined;
+	if (!isLifeInsurance) return {};
+	return {
+		type: "insurance",
+		policyNumber: asset.policyNumber as string | undefined,
+		insurer: asset.insurer as string | undefined,
+		policyType: (asset.policyType as string | undefined) || (asset.category as string | undefined),
+		coverageAmount:
+			typeof asset.coverageAmount === "number" && Number.isFinite(asset.coverageAmount)
+				? asset.coverageAmount
+				: undefined,
+		premiumAmount:
+			typeof asset.premiumAmount === "number" && Number.isFinite(asset.premiumAmount)
+				? asset.premiumAmount
+				: undefined,
+		premiumFrequency: asset.premiumFrequency as string | undefined,
+		beneficiaries: Array.isArray(asset.beneficiaries)
+			? asset.beneficiaries.join(", ")
+			: (asset.beneficiaries as string | undefined),
+		maturityDate: asset.maturityDate as string | undefined,
+		openingDate:
+			(asset.purchaseDate as string | undefined) || (asset.openingDate as string | undefined),
+	};
+}
+
 /**
  * Read an instrument reference metric off a GraphQL asset object.
  *
@@ -471,6 +515,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 		addCrypto: addCryptoMutation,
 		addRealEstate: addRealEstateMutation,
 		addLifeInsurance: addLifeInsuranceMutation,
+		updateLifeInsurance: updateLifeInsuranceMutation,
 		addWatch: addWatchMutation,
 		refreshAssetPrice,
 		loading: addingAsset,
@@ -582,6 +627,9 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 				const loanFields = extractLoanFields(
 					a.asset as { __typename?: string } & Record<string, unknown>,
 				);
+				const insuranceFields = extractLifeInsuranceFields(
+					a.asset as { __typename?: string } & Record<string, unknown>,
+				);
 				const rawCurrentVal =
 					typeof a.currentValue === "number" && Number.isFinite(a.currentValue)
 						? a.currentValue
@@ -601,7 +649,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 						? rawCurrentVal
 						: currentPrice > 0
 							? currentPrice * (a.quantity ?? 1)
-							: (realEstateFields.type || bankFields.type || loanFields.type) && purchasePrice > 0
+							: (realEstateFields.type || bankFields.type || loanFields.type || insuranceFields.type) && purchasePrice > 0
 								? purchasePrice * (a.quantity ?? 1)
 								: 0;
 				const dayChangePercent = a.dayChangePercent ?? null;
@@ -634,11 +682,27 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 					...bankFields,
 					...realEstateFields,
 					...loanFields,
-					institution: bankFields.institution || a.accountName || loanFields.lender || undefined,
-					account: a.accountName || bankFields.institution || loanFields.lender || undefined,
+					...insuranceFields,
+					institution:
+						insuranceFields.insurer ||
+						bankFields.institution ||
+						a.accountName ||
+						loanFields.lender ||
+						undefined,
+					account:
+						a.accountName ||
+						insuranceFields.insurer ||
+						bankFields.institution ||
+						loanFields.lender ||
+						undefined,
 					accountId: a.accountID || undefined,
 					// Ensure type is set correctly after spread (bankFields, realEstateFields or loanFields may override)
-					type: bankFields.type || realEstateFields.type || loanFields.type || assetType,
+					type:
+						insuranceFields.type ||
+						bankFields.type ||
+						realEstateFields.type ||
+						loanFields.type ||
+						assetType,
 				};
 			}),
 		);
@@ -875,6 +939,13 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 		[currentPortfolio, addLifeInsuranceMutation],
 	);
 
+	const updateLifeInsurance = useCallback(
+		async (id: string, input: UpdateLifeInsuranceInput) => {
+			return await updateLifeInsuranceMutation(id, input);
+		},
+		[updateLifeInsuranceMutation],
+	);
+
 	const addWatch = useCallback(
 		async (input: Omit<AddWatchInput, "portfolioId">) => {
 			if (!currentPortfolio) {
@@ -980,6 +1051,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 			addCrypto,
 			addRealEstate,
 			addLifeInsurance,
+			updateLifeInsurance,
 			addWatch,
 			updateAsset,
 			deleteAsset,
@@ -1008,6 +1080,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 			addCrypto,
 			addRealEstate,
 			addLifeInsurance,
+			updateLifeInsurance,
 			addWatch,
 			deleteAsset,
 			refreshAssetPrice,

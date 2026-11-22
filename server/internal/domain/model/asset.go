@@ -569,18 +569,20 @@ func (a *Asset) validateLifeInsuranceMetadata(metadata *LifeInsuranceMetadata) e
 	}
 	validPolicyTypes := map[string]bool{
 		"term": true, "whole": true, "universal": true, "variable": true,
+		"life_insurance": true, "retirement": true, "savings": true,
+		"death_insurance": true, "loan_insurance": true, "whole_life": true,
 	}
 	if !validPolicyTypes[metadata.PolicyType] {
 		return errors.New("invalid policy type")
 	}
-	if metadata.CoverageAmount <= 0 {
-		return errors.New("coverage amount must be positive")
+	if metadata.CoverageAmount < 0 {
+		return errors.New("coverage amount must be non-negative")
 	}
-	if metadata.PremiumAmount <= 0 {
-		return errors.New("premium amount must be positive")
+	if metadata.PremiumAmount < 0 {
+		return errors.New("premium amount must be non-negative")
 	}
 	validFrequencies := map[string]bool{
-		"monthly": true, "quarterly": true, "semi_annually": true, "annually": true,
+		"monthly": true, "quarterly": true, "semi_annually": true, "annually": true, "yearly": true, "single": true, "none": true,
 	}
 	if !validFrequencies[metadata.PremiumFrequency] {
 		return errors.New("invalid premium frequency")

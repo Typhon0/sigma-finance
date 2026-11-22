@@ -289,6 +289,33 @@ export const CREATE_LIFE_INSURANCE_ASSET = gql`
   }
 `;
 
+export const UPDATE_LIFE_INSURANCE_ASSET = gql`
+  mutation UpdateLifeInsuranceAsset($id: ID!, $input: UpdateLifeInsuranceInput!) {
+    updateLifeInsuranceAsset(id: $id, input: $input) {
+      id
+      name
+      symbol
+      currentValue
+      purchasePrice
+      purchaseDate
+      policyNumber
+      insurer
+      policyType
+      coverageAmount
+      premiumAmount
+      premiumFrequency
+      beneficiaries
+      maturityDate
+      dayChange
+      dayChangePercent
+      assetType {
+        id
+        name
+      }
+    }
+  }
+`;
+
 export const CREATE_WATCH_ASSET = gql`
   mutation CreateWatchAsset($input: CreateWatchInput!) {
     createWatchAsset(input: $input) {

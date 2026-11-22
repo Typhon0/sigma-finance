@@ -78,6 +78,7 @@ type Mutation {
     createRealEstateAsset(input: CreateRealEstateInput!): RealEstate! @auth
     updateRealEstateAsset(id: ID!, input: UpdateRealEstateInput!): RealEstate! @auth
     createLifeInsuranceAsset(input: CreateLifeInsuranceInput!): LifeInsurance! @auth
+    updateLifeInsuranceAsset(id: ID!, input: UpdateLifeInsuranceInput!): LifeInsurance! @auth
     createWatchAsset(input: CreateWatchInput!): Watch! @auth
     createLoanAsset(input: CreateLoanInput!): Loan! @auth
     tagAsset(assetID: ID!, tagID: ID!): Asset! @auth

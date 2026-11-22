@@ -920,6 +920,7 @@ type ComplexityRoot struct {
 		UpdateAssetInPortfolio           func(childComplexity int, input gqlModel.PortfolioAssetInput) int
 		UpdateBlockchainNetworkConfig    func(childComplexity int, input gqlModel.UpdateBlockchainNetworkConfigInput) int
 		UpdateFinanceDatabaseSyncEnabled func(childComplexity int, assetType gqlModel.AssetSyncType, enabled bool) int
+		UpdateLifeInsuranceAsset         func(childComplexity int, id string, input gqlModel.UpdateLifeInsuranceInput) int
 		UpdateManualInstrument           func(childComplexity int, id string, input gqlModel.UpdateManualInstrumentInput) int
 		UpdateMarketDataPack             func(childComplexity int, packID string) int
 		UpdatePerformanceSnapshots       func(childComplexity int, portfolioIds []string, asOfDate time.Time) int
@@ -1770,6 +1771,7 @@ type MutationResolver interface {
 	CreateRealEstateAsset(ctx context.Context, input gqlModel.CreateRealEstateInput) (*gqlModel.RealEstate, error)
 	UpdateRealEstateAsset(ctx context.Context, id string, input gqlModel.UpdateRealEstateInput) (*gqlModel.RealEstate, error)
 	CreateLifeInsuranceAsset(ctx context.Context, input gqlModel.CreateLifeInsuranceInput) (*gqlModel.LifeInsurance, error)
+	UpdateLifeInsuranceAsset(ctx context.Context, id string, input gqlModel.UpdateLifeInsuranceInput) (*gqlModel.LifeInsurance, error)
 	CreateWatchAsset(ctx context.Context, input gqlModel.CreateWatchInput) (*gqlModel.Watch, error)
 	CreateLoanAsset(ctx context.Context, input gqlModel.CreateLoanInput) (*gqlModel.Loan, error)
 	TagAsset(ctx context.Context, assetID string, tagID string) (gqlModel.Asset, error)
@@ -6516,6 +6518,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.UpdateFinanceDatabaseSyncEnabled(childComplexity, args["assetType"].(gqlModel.AssetSyncType), args["enabled"].(bool)), true
+	case "Mutation.updateLifeInsuranceAsset":
+		if e.ComplexityRoot.Mutation.UpdateLifeInsuranceAsset == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateLifeInsuranceAsset_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateLifeInsuranceAsset(childComplexity, args["id"].(string), args["input"].(gqlModel.UpdateLifeInsuranceInput)), true
 	case "Mutation.updateManualInstrument":
 		if e.ComplexityRoot.Mutation.UpdateManualInstrument == nil {
 			break
@@ -10976,6 +10989,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateAccountInput,
 		ec.unmarshalInputUpdateAlertInput,
 		ec.unmarshalInputUpdateBlockchainNetworkConfigInput,
+		ec.unmarshalInputUpdateLifeInsuranceInput,
 		ec.unmarshalInputUpdateManualInstrumentInput,
 		ec.unmarshalInputUpdatePortfolioInput,
 		ec.unmarshalInputUpdateRealEstateInput,
@@ -12406,6 +12420,22 @@ func (ec *executionContext) field_Mutation_updateFinanceDatabaseSyncEnabled_args
 		return nil, err
 	}
 	args["enabled"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateLifeInsuranceAsset_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateLifeInsuranceInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUpdateLifeInsuranceInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg1
 	return args, nil
 }
 
@@ -33460,6 +33490,104 @@ func (ec *executionContext) fieldContext_Mutation_createLifeInsuranceAsset(ctx c
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_createLifeInsuranceAsset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateLifeInsuranceAsset(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateLifeInsuranceAsset,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateLifeInsuranceAsset(ctx, fc.Args["id"].(string), fc.Args["input"].(gqlModel.UpdateLifeInsuranceInput))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.LifeInsurance
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNLifeInsurance2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLifeInsurance,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateLifeInsuranceAsset(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_LifeInsurance_id(ctx, field)
+			case "name":
+				return ec.fieldContext_LifeInsurance_name(ctx, field)
+			case "symbol":
+				return ec.fieldContext_LifeInsurance_symbol(ctx, field)
+			case "assetType":
+				return ec.fieldContext_LifeInsurance_assetType(ctx, field)
+			case "currentValue":
+				return ec.fieldContext_LifeInsurance_currentValue(ctx, field)
+			case "purchaseDate":
+				return ec.fieldContext_LifeInsurance_purchaseDate(ctx, field)
+			case "purchasePrice":
+				return ec.fieldContext_LifeInsurance_purchasePrice(ctx, field)
+			case "tags":
+				return ec.fieldContext_LifeInsurance_tags(ctx, field)
+			case "policyNumber":
+				return ec.fieldContext_LifeInsurance_policyNumber(ctx, field)
+			case "insurer":
+				return ec.fieldContext_LifeInsurance_insurer(ctx, field)
+			case "policyType":
+				return ec.fieldContext_LifeInsurance_policyType(ctx, field)
+			case "coverageAmount":
+				return ec.fieldContext_LifeInsurance_coverageAmount(ctx, field)
+			case "premiumAmount":
+				return ec.fieldContext_LifeInsurance_premiumAmount(ctx, field)
+			case "premiumFrequency":
+				return ec.fieldContext_LifeInsurance_premiumFrequency(ctx, field)
+			case "beneficiaries":
+				return ec.fieldContext_LifeInsurance_beneficiaries(ctx, field)
+			case "maturityDate":
+				return ec.fieldContext_LifeInsurance_maturityDate(ctx, field)
+			case "sector":
+				return ec.fieldContext_LifeInsurance_sector(ctx, field)
+			case "exchange":
+				return ec.fieldContext_LifeInsurance_exchange(ctx, field)
+			case "dayChange":
+				return ec.fieldContext_LifeInsurance_dayChange(ctx, field)
+			case "dayChangePercent":
+				return ec.fieldContext_LifeInsurance_dayChangePercent(ctx, field)
+			case "positions":
+				return ec.fieldContext_LifeInsurance_positions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LifeInsurance", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateLifeInsuranceAsset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -69153,6 +69281,113 @@ func (ec *executionContext) unmarshalInputUpdateBlockchainNetworkConfigInput(ctx
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateLifeInsuranceInput(ctx context.Context, obj any) (gqlModel.UpdateLifeInsuranceInput, error) {
+	var it gqlModel.UpdateLifeInsuranceInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "policyNumber", "insurer", "policyType", "coverageAmount", "premiumAmount", "premiumFrequency", "beneficiaries", "maturityDate", "currentValue", "purchasePrice", "purchaseDate"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "policyNumber":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("policyNumber"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PolicyNumber = data
+		case "insurer":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("insurer"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Insurer = data
+		case "policyType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("policyType"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PolicyType = data
+		case "coverageAmount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("coverageAmount"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CoverageAmount = data
+		case "premiumAmount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("premiumAmount"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PremiumAmount = data
+		case "premiumFrequency":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("premiumFrequency"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PremiumFrequency = data
+		case "beneficiaries":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("beneficiaries"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Beneficiaries = data
+		case "maturityDate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maturityDate"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaturityDate = data
+		case "currentValue":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currentValue"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrentValue = data
+		case "purchasePrice":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("purchasePrice"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PurchasePrice = data
+		case "purchaseDate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("purchaseDate"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PurchaseDate = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateManualInstrumentInput(ctx context.Context, obj any) (gqlModel.UpdateManualInstrumentInput, error) {
 	var it gqlModel.UpdateManualInstrumentInput
 	if obj == nil {
@@ -75175,6 +75410,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "createLifeInsuranceAsset":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createLifeInsuranceAsset(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateLifeInsuranceAsset":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateLifeInsuranceAsset(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -84864,6 +85106,11 @@ func (ec *executionContext) unmarshalNUpdateAlertInput2sigma_financeᚋinternal�
 
 func (ec *executionContext) unmarshalNUpdateBlockchainNetworkConfigInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUpdateBlockchainNetworkConfigInput(ctx context.Context, v any) (gqlModel.UpdateBlockchainNetworkConfigInput, error) {
 	res, err := ec.unmarshalInputUpdateBlockchainNetworkConfigInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateLifeInsuranceInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUpdateLifeInsuranceInput(ctx context.Context, v any) (gqlModel.UpdateLifeInsuranceInput, error) {
+	res, err := ec.unmarshalInputUpdateLifeInsuranceInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
